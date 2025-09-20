@@ -12,6 +12,7 @@ use ntsync::{
     OwnerId,
 };
 use rstest::rstest;
+use std::collections::HashSet;
 use test_log::test;
 mod fixtures;
 use fixtures::*;
@@ -35,6 +36,9 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     let owner = OwnerId::random();
     let mutex = instance.new_mutex()?;
     assert_eq!(mutex.unlock(owner), Err(Error::PermissionDenied));
+    let mut sources = HashSet::new();
+    sources.insert(mutex.into());
+    instance.wait_all(sources, None, Some(owner))?;
     Ok(())
 }
 
