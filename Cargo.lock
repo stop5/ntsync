@@ -256,7 +256,6 @@ dependencies = [
  "bitflags",
  "derive-new",
  "ioctls",
- "lazy_static",
  "libc",
  "log",
  "rand",
