@@ -1,4 +1,6 @@
 #![allow(unused)]
+#![forbid(clippy::panic)]
+#![forbid(clippy::unimplemented)]
 use std::{
     collections::HashSet,
     ffi::c_int,
@@ -64,7 +66,7 @@ macro_rules! errno_match {
             } else if __errno == ETIMEDOUT {
                 return Err(Error::Timeout);
             } else {
-                unimplemented!("Unimplemented errno: {__errno}")
+                return Err(Error::Unknown(__errno));
             };
         }
     }};

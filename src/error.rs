@@ -24,6 +24,8 @@ pub enum Error {
     Interrupt,
     /// When an Event is part of the sources and the alert that stops the wait.
     DuplicateEvent,
+    /// When an unknown errno is set this is returned, so that an panic is prevented.
+    Unknown(i32),
 }
 
 impl PartialEq for Error {
@@ -36,6 +38,7 @@ impl PartialEq for Error {
             (Self::Timeout, Self::Timeout) => true,
             (Self::OwnerDead, Self::OwnerDead) => true,
             (Self::Interrupt, Self::Interrupt) => true,
+            (Self::Unknown(a), Self::Unknown(b)) => a == b,
             (..) => false,
         }
     }
@@ -44,15 +47,16 @@ impl PartialEq for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::NotExist => f.write_str("Device does not Exist"),
-            Error::IOError(error) => f.write_fmt(format_args!("IOError: {error}")),
-            Error::InvalidValue => f.write_str("Invalid Value for the operation"),
-            Error::SemaphoreOverflow => f.write_str("adding the Value to the semaphore exceeds the maximum"),
-            Error::PermissionDenied => f.write_str("Cannot Unlock the Mutex. It is owned by another process"),
-            Error::Timeout => f.write_str("Waiting timed out"),
-            Error::OwnerDead => f.write_str("Owner of the mutex was killed."),
-            Error::Interrupt => f.write_str("Interrupt received"),
-            Error::DuplicateEvent => f.write_str("An Event is part of the sources and was added as an Alert"),
+            Self::NotExist => f.write_str("Device does not Exist"),
+            Self::IOError(error) => f.write_fmt(format_args!("IOError: {error}")),
+            Self::InvalidValue => f.write_str("Invalid Value for the operation"),
+            Self::SemaphoreOverflow => f.write_str("adding the Value to the semaphore exceeds the maximum"),
+            Self::PermissionDenied => f.write_str("Cannot Unlock the Mutex. It is owned by another process"),
+            Self::Timeout => f.write_str("Waiting timed out"),
+            Self::OwnerDead => f.write_str("Owner of the mutex was killed."),
+            Self::Interrupt => f.write_str("Interrupt received"),
+            Self::DuplicateEvent => f.write_str("An Event is part of the sources and was added as an Alert"),
+            Self::Unknown(errno) => f.write_fmt(format_args!("Unknown errno received: {errno}")),
         }
     }
 }
