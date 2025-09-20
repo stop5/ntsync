@@ -96,6 +96,7 @@ bitflags! {
 pub struct OwnerId(u32);
 
 #[cfg(feature = "random")]
+#[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
 impl OwnerId {
     pub fn random() -> Self {
         OwnerId(rand::random::<u32>().clamp(1, u32::MAX))
