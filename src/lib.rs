@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(clippy::panic)]
 #![forbid(clippy::unimplemented)]
 use bitflags::bitflags;
@@ -17,19 +18,24 @@ use std::{
 mod error;
 mod event;
 #[cfg(feature = "unstable_mutex")]
+#[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
 mod mutex;
+#[cfg(feature = "semaphore")]
+#[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
 mod semaphore;
 mod wait;
 
-pub use crate::{
-    error::Error,
-    event::{
-        Event,
-        EventStatus,
-    },
-    semaphore::Semaphore,
+pub use crate::error::Error;
+
+#[cfg(feature = "semaphore")]
+#[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
+pub use crate::semaphore::Semaphore;
+pub use event::{
+    Event,
+    EventStatus,
 };
 #[cfg(feature = "unstable_mutex")]
+#[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
 pub use mutex::Mutex;
 
 const DEVICE: &str = "/dev/ntsync";
@@ -150,7 +156,11 @@ impl Clone for NtSync {
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
     Mutex(mutex::Mutex),
+
+    #[cfg(feature = "semaphore")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
     Semaphore(semaphore::Semaphore),
     Event(event::Event),
 }

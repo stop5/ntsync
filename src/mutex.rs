@@ -1,7 +1,6 @@
 use std::os::fd::AsRawFd as _;
 
 use derive_new::new;
-#[cfg(feature = "unstable_mutex")]
 use ioctls::ioctl;
 use log::*;
 
@@ -70,14 +69,10 @@ impl NtSync {
 }
 
 //#define NTSYNC_IOC_CREATE_MUTEX         _IOW ('N', 0x84, struct ntsync_mutex_args)
-#[cfg(feature = "unstable_mutex")]
 ioctl!(write ntsync_create_mutex with b'N', 0x84; MutexArgs);
 //#define NTSYNC_IOC_MUTEX_UNLOCK         _IOWR('N', 0x85, struct ntsync_mutex_args)
-#[cfg(feature = "unstable_mutex")]
 ioctl!(readwrite ntsync_mutex_unlock with b'N', 0x85; MutexArgs);
 //#define NTSYNC_IOC_MUTEX_KILL           _IOW ('N', 0x86, __u32)
-#[cfg(feature = "unstable_mutex")]
 ioctl!(write ntsync_mutex_kill with b'N', 0x86; u32);
 //#define NTSYNC_IOC_MUTEX_READ           _IOR ('N', 0x8c, struct ntsync_mutex_args)
-#[cfg(feature = "unstable_mutex")]
 ioctl!(read ntsync_mutex_read with b'N', 0x8c; MutexArgs);

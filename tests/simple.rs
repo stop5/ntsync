@@ -43,6 +43,7 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
 }
 
 #[test(rstest)]
+#[cfg(feature = "semaphore")]
 fn ntsync_semaphore(instance: NtSync) -> Result<(), Error> {
     let semaphore = match instance.new_semaphore(3) {
         Ok(event) => event,

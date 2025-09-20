@@ -7,10 +7,11 @@ use ioctls::ioctl;
 #[allow(unused_imports)]
 use log::*;
 
+use crate::Event;
+#[allow(unused)]
 use crate::{
     AlertDescriptor,
     Error,
-    Event,
     EventSources,
     NtSync,
     NtSyncFlags,
@@ -18,7 +19,6 @@ use crate::{
     errno_match,
     raw,
 };
-
 
 #[repr(C)]
 #[derive(Debug)]
@@ -42,6 +42,7 @@ impl WaitArgs {
         flags: NtSyncFlags,
     ) -> crate::Result<Self> {
         let mut ids = Vec::new();
+
         let alertid = alert
             .unwrap_or(Event {
                 id: 0,
@@ -55,6 +56,7 @@ impl WaitArgs {
                     }
                     ids.push(event.id as u64)
                 },
+                #[cfg(feature = "semaphore")]
                 EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
 
                 #[cfg(feature = "unstable_mutex")]

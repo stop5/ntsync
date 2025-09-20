@@ -1,3 +1,7 @@
 [env]
-RUST_LOG="trace"
-RUST_BACKTRACE="full"
+RUST_BACKTRACE = "full"
+RUST_LOG = "trace"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
