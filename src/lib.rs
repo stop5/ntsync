@@ -159,7 +159,7 @@ impl Clone for NtSync {
 }
 
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 /// EventSources is an enum, so that the different types can coexist in an [`std::collections::HashSet`], [`Vec`] or any other type deailing with them,
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
@@ -170,4 +170,27 @@ pub enum EventSources {
     #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
     Semaphore(semaphore::Semaphore),
     Event(event::Event),
+}
+
+impl EventSources {
+    /// Frees the respective resource.
+    /// [crate::mutex::Mutex] are unlocked
+    /// [crate::semaphore::Semaphore] are released with an amount of 1
+    /// [crate::event::Event] are reset;
+    pub fn free(&self, _owner: OwnerId) -> Result<()> {
+        match self {
+            #[cfg(feature = "unstable_mutex")]
+            EventSources::Mutex(mutex) => {
+                mutex.unlock(_owner)?;
+            },
+            #[cfg(feature = "semaphore")]
+            EventSources::Semaphore(semaphore) => {
+                semaphore.release(1)?;
+            },
+            EventSources::Event(event) => {
+                event.reset()?;
+            },
+        };
+        Ok(())
+    }
 }
