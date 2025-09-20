@@ -1,0 +1,68 @@
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-toml
+      - id: check-shebang-scripts-are-executable
+        exclude_types:
+          - rust
+      - id: check-symlinks
+      - id: check-vcs-permalinks
+      - id: check-yaml
+      - id: detect-private-key
+      - id: fix-byte-order-marker
+      - id: forbid-submodules
+      - id: mixed-line-ending
+        args:
+          - --fix=lf
+      - id: trailing-whitespace
+      - id: destroyed-symlinks
+  - repo: local
+    hooks:
+      - id: fmt
+        name: fmt
+        description: Format files with cargo fmt.
+        entry: cargo +nightly fmt
+        language: system
+        types:
+          - rust
+        args:
+          - --
+      - id: cargo-check
+        name: cargo check
+        description: Check the package for errors.
+        entry: cargo check
+        language: system
+        types:
+          - rust
+        pass_filenames: false
+      - id: clippy
+        name: clippy
+        description: Lint rust sources
+        entry: cargo +nightly clippy
+        language: system
+        args:
+          - --
+          - -D
+          - warnings
+        types:
+          - rust
+        pass_filenames: false
+      - id: tomlq
+        name: toml Format
+        description: Formats Toml files
+        entry: tomlq -S -ti .
+        language: system
+        types_or:
+          - toml
+          - cargo
+        exclude: '\.lock$'
+        stages:
+          - manual
+          - pre-commit

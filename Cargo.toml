@@ -1,0 +1,39 @@
+[dependencies]
+bitflags = "2.9.4"
+derive-new = "0.7"
+ioctls = "0.6"
+lazy_static = "1.5.0"
+
+[dependencies.libc]
+features = ["extra_traits", "align", "const-extern-fn"]
+version = "0.2.175"
+
+[dependencies.log]
+features = ["std"]
+version = "0"
+
+[dependencies.rand]
+optional = true
+version = "0.9.2"
+
+[dev-dependencies]
+rstest = "0.26.1"
+
+[dev-dependencies.test-log]
+features = ["trace"]
+version = "0.2.18"
+
+[features]
+default = ["random"]
+random = ["dep:rand"]
+unstable = ["unstable_mutex"]
+unstable_mutex = []
+
+[package]
+description = "An simple crate for using the new ntsync linux driver with rust."
+documentation = "https://docs.rs/ntsync"
+edition = "2024"
+license = "GPL"
+name = "ntsync"
+repository = ""
+version = "0.1.0"
