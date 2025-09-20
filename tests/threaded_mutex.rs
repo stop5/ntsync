@@ -25,7 +25,9 @@ fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
     let thread_data = (instance.clone(), mutex, OwnerId::random());
     let owner = OwnerId::random();
     trace!("My owner: {}\nother owner: {}", owner, thread_data.2);
-    instance.wait_all(&[mutex.into()], None, Some(owner))?;
+    let mut sources = HashSet::new();
+    sources.insert(mutex.into());
+    instance.wait_all(sources, None, Some(owner))?;
     let thread: JoinHandle<Result<(), Error>> = match Builder::new().name("lock thread".to_owned()).spawn::<_, Result<(), Error>>(move || {
         let (instance, mutex, _owner) = thread_data;
         debug!("current owner of the mutex: {:?}", mutex.read());

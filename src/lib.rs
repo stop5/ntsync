@@ -191,7 +191,7 @@ impl Clone for NtSync {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
     Mutex(Mutex),
@@ -199,7 +199,7 @@ pub enum EventSources {
     Event(Event),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Semaphore {
     id: Fd,
 }
@@ -232,7 +232,7 @@ impl Semaphore {
 }
 
 #[cfg(feature = "unstable_mutex")]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Mutex {
     id: Fd,
 }
@@ -266,7 +266,7 @@ impl Mutex {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Event {
     id: Fd,
 }
