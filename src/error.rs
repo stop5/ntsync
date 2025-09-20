@@ -4,6 +4,7 @@ use std::{
 };
 
 #[derive(Debug)]
+/// Error return Code.
 pub enum Error {
     /// Returned when the /dev/ntsync device does not exists
     NotExist,
