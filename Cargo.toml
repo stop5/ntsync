@@ -23,8 +23,10 @@ features = ["trace"]
 version = "0.2.18"
 
 [features]
-default = ["random"]
+default = ["random", "semaphore", "event"]
+event = []
 random = ["dep:rand"]
+semaphore = []
 unstable = ["unstable_mutex"]
 unstable_mutex = []
 
@@ -38,4 +40,4 @@ repository = "https://github.com/stop5/ntsync"
 version = "0.1.0"
 
 [package.metadata.docs.rs]
-features = ["unstable"]
+features = ["unstable", "default"]
