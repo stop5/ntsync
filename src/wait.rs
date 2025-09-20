@@ -84,7 +84,12 @@ impl WaitArgs {
     }
 }
 
+/// The timeout argument of [NtSync::wait_all] and [NtSync::wait_any] is unstable and will be changed to an different Type.
 impl NtSync {
+    /// this function waits until all sources are free/triggered.
+    /// It is the reason [NtSync::wait_any] also has an [`std::collections::HashSet`] in its signature.
+    /// the Kernel Driver reacts with duplicate Values in its event sources or an Event that is both an object and an alert.
+    /// this implementation prevents it by making it impossible to reach that state.
     pub fn wait_all(&self, sources: HashSet<EventSources>, timeout: Option<u64>, owner: Option<OwnerId>) -> crate::Result<()> {
         let mut args = WaitArgs::new(timeout.unwrap_or(u64::MAX), sources, None, owner, NtSyncFlags::empty())?;
         if unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
@@ -93,6 +98,7 @@ impl NtSync {
         Ok(())
     }
 
+    /// this is similar to [NtSync::wait_all], but it will stop waiting once one Source triggers.
     pub fn wait_any(&self, sources: HashSet<EventSources>, timeout: Option<u64>, owner: Option<OwnerId>) -> crate::Result<()> {
         let mut args = WaitArgs::new(timeout.unwrap_or(u64::MAX), sources, None, owner, NtSyncFlags::empty())?;
         if unsafe { ntsync_wait_any(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {

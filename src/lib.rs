@@ -36,7 +36,10 @@ pub use event::{
 };
 #[cfg(feature = "unstable_mutex")]
 #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
-pub use mutex::Mutex;
+pub use mutex::{
+    Mutex,
+    MutexStatus,
+};
 
 const DEVICE: &str = "/dev/ntsync";
 
@@ -97,6 +100,7 @@ pub struct OwnerId(u32);
 
 #[cfg(feature = "random")]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
+/// An [`OwnerId`] is just an identifier the Kernel Module does not check if it matches something else than an number
 impl OwnerId {
     pub fn random() -> Self {
         OwnerId(rand::random::<u32>().clamp(1, u32::MAX))
@@ -119,7 +123,8 @@ pub struct NtSync {
     inner: Arc<NtSyncInner>,
 }
 
-/// NtSync is an
+/// NtSync is an abstration over the Kernel API that is realised via ioctls.
+/// Each instance is indipendent so using objects from one instance with another is forbidden.
 impl NtSync {
     pub fn new() -> crate::Result<Self> {
         match exists(DEVICE) {
@@ -155,6 +160,7 @@ impl Clone for NtSync {
 
 
 #[derive(Debug, Hash, PartialEq, Eq)]
+/// EventSources is an enum, so that the different types can coexist in an [`std::collections::HashSet`], [`Vec`] or any other type deailing with them,
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]

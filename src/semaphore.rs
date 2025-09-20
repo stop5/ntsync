@@ -21,6 +21,8 @@ pub struct SemaphoreArgs {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// An Semaphore. When the counter reaches 0 Threads will wait until one thread release an specific amount of resources.
+/// <div class="warning">Do not release Resources when the ressources are allocated. This can lead to Reduced Perfomance when they are released.</div>
 pub struct Semaphore {
     pub(crate) id: Fd,
 }
@@ -56,7 +58,7 @@ impl Semaphore {
 
 
 impl NtSync {
-    /// creates a new Semaphore. it is always initalized with an count of 0 and an Maximum between 1 and u32::MAX.
+    /// creates a new Semaphore. it is always initalized with an count of 0 and an Maximum between 1 and [u32::MAX].
     pub fn new_semaphore(&self, maximum: u32) -> crate::Result<Semaphore> {
         let args = SemaphoreArgs::new(maximum.clamp(1, u32::MAX));
         let result = unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreArgs)) };

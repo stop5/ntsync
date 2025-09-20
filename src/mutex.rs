@@ -15,13 +15,35 @@ use crate::{
 
 #[repr(C)]
 #[derive(Debug, new, Default)]
-pub struct MutexArgs {
+pub struct MutexStatus {
     owner: OwnerId,
     #[new(value = "0")]
     count: u32,
 }
 
+impl MutexStatus {
+    /// The current Owner of the Mutex
+    pub fn owner(&self) -> Option<OwnerId> {
+        if self.owner.0 == 0 {
+            return None;
+        }
+        Some(self.owner)
+    }
+
+    /// how many times the current owner has locked the Mutex.
+    pub fn depth(&self) -> Option<u32> {
+        if self.count != 0 {
+            Some(self.count)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// An Mutex similar to [`std::sync::Mutex`], but it can't store Data.
+/// On its own it can only be unlocked. The Locking is done in the [NtSync::wait_any] or [NtSync::wait_all] calls.
+
 pub struct Mutex {
     pub(crate) id: Fd,
 }
@@ -35,18 +57,20 @@ impl Into<EventSources> for Mutex {
 }
 
 impl Mutex {
+    /// unlocks the Mutex, if its the wrong owner then it fails with [crate::error::Error::PermissionDenied]
     pub fn unlock(&self, owner: OwnerId) -> crate::Result<()> {
-        let mut args = MutexArgs::new(owner);
-        if unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexArgs)) } == -1 {
+        let mut args = MutexStatus::new(owner);
+        if unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } == -1 {
             errno_match!()
         }
         Ok(())
     }
 
     #[allow(unused)]
-    pub fn read(&self) -> crate::Result<MutexArgs> {
-        let mut args = MutexArgs::default();
-        if unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexArgs)) } == -1 {
+    /// reads the current status of the Mutex.
+    pub fn read(&self) -> crate::Result<MutexStatus> {
+        let mut args = MutexStatus::default();
+        if unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } == -1 {
             errno_match!()
         }
         Ok(args)
@@ -54,9 +78,10 @@ impl Mutex {
 }
 
 impl NtSync {
+    /// Creates an unlocked, unowned Mutex.
     pub fn new_mutex(&self) -> crate::Result<Mutex> {
-        let args = MutexArgs::default();
-        let result = unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!( const args: MutexArgs)) };
+        let args = MutexStatus::default();
+        let result = unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!( const args: MutexStatus)) };
         if result < 0 {
             trace!("Failed to create mutex");
             errno_match!();
@@ -69,10 +94,10 @@ impl NtSync {
 }
 
 //#define NTSYNC_IOC_CREATE_MUTEX         _IOW ('N', 0x84, struct ntsync_mutex_args)
-ioctl!(write ntsync_create_mutex with b'N', 0x84; MutexArgs);
+ioctl!(write ntsync_create_mutex with b'N', 0x84; MutexStatus);
 //#define NTSYNC_IOC_MUTEX_UNLOCK         _IOWR('N', 0x85, struct ntsync_mutex_args)
-ioctl!(readwrite ntsync_mutex_unlock with b'N', 0x85; MutexArgs);
+ioctl!(readwrite ntsync_mutex_unlock with b'N', 0x85; MutexStatus);
 //#define NTSYNC_IOC_MUTEX_KILL           _IOW ('N', 0x86, __u32)
 ioctl!(write ntsync_mutex_kill with b'N', 0x86; u32);
 //#define NTSYNC_IOC_MUTEX_READ           _IOR ('N', 0x8c, struct ntsync_mutex_args)
-ioctl!(read ntsync_mutex_read with b'N', 0x8c; MutexArgs);
+ioctl!(read ntsync_mutex_read with b'N', 0x8c; MutexStatus);

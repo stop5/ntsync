@@ -15,22 +15,29 @@ use log::*;
 
 #[repr(C)]
 #[derive(Debug, new, Default)]
+/// Represents the Status of the Event at the moment of the Query.
 pub struct EventStatus {
     signaled: u32,
     manual: u32,
 }
 
 impl EventStatus {
-    pub fn manual_signal(&self) -> bool {
+    /// Returns true if the event is an manual reset event
+    pub fn manual_reset(&self) -> bool {
         self.manual == 1
     }
 
-    pub fn auto_signal(&self) -> bool {
+    /// Returns true if the event was automatically triggered.
+    pub fn signaled(&self) -> bool {
         self.signaled == 1
     }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// An Event is an Type that can send Signals to other parts of the code.
+/// They can be automatically or manually reset.
+/// With manually reset events all waiting threads are worken up, but with automatically reset Event only one wakes up and can do the work.
+/// <div class="warning">An Automatically reset Event can trigger multiple times in a row and wake a whole lot of threads up</div>
 pub struct Event {
     pub(crate) id: Fd,
 }
@@ -47,6 +54,7 @@ impl Event {
         Ok(state != 0)
     }
 
+    /// [Event::reset] resets manual Events. It does nothing in Automatic Events
     pub fn reset(&self) -> crate::Result<bool> {
         let mut state: u32 = 0;
         if unsafe { ntsync_event_reset(self.id, raw!(mut state: u32)) } == -1 {
@@ -55,6 +63,8 @@ impl Event {
         Ok(state != 0)
     }
 
+    /// Sets and resets the Event in an Atomic Operation.
+    /// Simultanous Reads will show the Event as unsignaled
     pub fn pulse(&self) -> crate::Result<bool> {
         let mut state: u32 = 0;
         if unsafe { ntsync_event_pulse(self.id, raw!(mut state: u32)) } == -1 {
@@ -63,6 +73,7 @@ impl Event {
         Ok(state != 0)
     }
 
+    /// Returns the Status at the moment of the Query.
     pub fn status(&self) -> crate::Result<EventStatus> {
         let mut args = EventStatus::default();
         if unsafe { ntsync_event_read(self.id, raw!(mut args: EventStatus)) } == -1 {
@@ -82,8 +93,12 @@ impl From<Event> for EventSources {
 }
 
 impl NtSync {
-    pub fn new_event(&self) -> crate::Result<Event> {
-        let args = EventStatus::new(0, 0);
+    /// Creates a new Event.
+    /// if signaled is true the threads begin the work as soo they are waiting.
+    /// when manual is true, the event has to be reset manually.
+    /// if manual is false after the first thread successful waits on it, the signaled status is set to false.
+    pub fn new_event(&self, signaled: bool, manual: bool) -> crate::Result<Event> {
+        let args = EventStatus::new(signaled as u32, manual as u32);
         let result = unsafe { ntsync_create_event(self.inner.handle.as_raw_fd(), raw!(const args: EventStatus)) };
         if result < 0 {
             trace!("Failed to create event");
