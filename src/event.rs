@@ -17,8 +17,8 @@ use log::*;
 #[derive(Debug, new, Default)]
 /// Represents the Status of the Event at the moment of the Query.
 pub struct EventStatus {
-    signaled: u32,
     manual: u32,
+    signaled: u32,
 }
 
 impl EventStatus {

@@ -19,14 +19,18 @@ use fixtures::*;
 
 #[test(rstest)]
 fn ntsync_event(instance: NtSync) -> Result<(), Error> {
-    let event = instance.new_event()?;
+    let event = instance.new_event(false, false)?;
     trace!("old value after signal: {}", event.signal()?);
-    assert!(event.status()?.manual_signal(), "Event is not signaled");
+    trace!("Status: {}", event.status()?.signaled());
+    assert!(event.status()?.signaled(), "Event is not signaled");
     trace!("old value after second signal: {}", event.signal()?);
-    assert!(event.status()?.manual_signal(), "Event is not signaled");
+    trace!("Status: {}", event.status()?.signaled());
+    assert!(event.status()?.signaled(), "Event is not signaled");
     trace!("old value after reset: {}", event.reset()?);
-    assert!(!event.status()?.manual_signal(), "Event is still signaled");
+    trace!("Status: {}", event.status()?.signaled());
+    assert!(!event.status()?.signaled(), "Event is still signaled");
     trace!("old value after pulse: {}", event.pulse()?);
+    trace!("Status: {}", event.status()?.signaled());
     Ok(())
 }
 
@@ -38,7 +42,7 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     assert_eq!(mutex.unlock(owner), Err(Error::PermissionDenied));
     let mut sources = HashSet::new();
     sources.insert(mutex.into());
-    instance.wait_all(sources, None, Some(owner))?;
+    instance.wait_all(sources, None, Some(owner), None)?;
     Ok(())
 }
 
