@@ -1,6 +1,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(clippy::panic)]
 #![forbid(clippy::unimplemented)]
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
 use bitflags::bitflags;
 use derive_new::new;
 use log::*;
@@ -89,19 +91,22 @@ pub(crate) use raw;
 
 bitflags! {
     #[derive(Debug, Default)]
+    /// This helps Managing the Flags for waiting on Events.
     pub struct NtSyncFlags: u32 {
+        /// This causes the Kernel to use the Realtime Clock instead of the monotonic clock.
         const WaitRealtime = 0x1;
     }
 }
 
 #[repr(transparent)]
 #[derive(Debug, new, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Default)]
+/// An [`OwnerId`] is just an identifier the Kernel Module does not check if it matches something else than an number
 pub struct OwnerId(u32);
 
 #[cfg(feature = "random")]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
-/// An [`OwnerId`] is just an identifier the Kernel Module does not check if it matches something else than an number
 impl OwnerId {
+    /// Generates an random Owner
     pub fn random() -> Self {
         OwnerId(rand::random::<u32>().clamp(1, u32::MAX))
     }
@@ -119,13 +124,14 @@ struct NtSyncInner {
 }
 
 #[derive(Debug)]
+/// NtSync is an abstration over the Kernel API that is realised via ioctls.
+/// Each instance is indipendent so using objects from one instance with another is forbidden.
 pub struct NtSync {
     inner: Arc<NtSyncInner>,
 }
 
-/// NtSync is an abstration over the Kernel API that is realised via ioctls.
-/// Each instance is indipendent so using objects from one instance with another is forbidden.
 impl NtSync {
+    /// Creates an new instance of NtSync
     pub fn new() -> crate::Result<Self> {
         match exists(DEVICE) {
             Ok(true) => {},
@@ -164,19 +170,25 @@ impl Clone for NtSync {
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
+    /// The Wrapper for Mutex
     Mutex(mutex::Mutex),
 
     #[cfg(feature = "semaphore")]
     #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
+    /// The Wrapper for Semaphores
     Semaphore(semaphore::Semaphore),
+    /// An simple wrapper around Events
     Event(event::Event),
 }
 
 impl EventSources {
     /// Frees the respective resource.
-    /// [crate::mutex::Mutex] are unlocked
-    /// [crate::semaphore::Semaphore] are released with an amount of 1
-    /// [crate::event::Event] are reset;
+    #[cfg_attr(feature = "unstable_mutex", doc = "[crate::mutex::Mutex] are unlocked.")]
+    #[cfg_attr(
+        feature = "semaphore",
+        doc = "[crate::semaphore::Semaphore] are released with an amount of 1."
+    )]
+    #[doc = "[crate::event::Event] are reset."]
     pub fn free(&self, _owner: OwnerId) -> Result<()> {
         match self {
             #[cfg(feature = "unstable_mutex")]

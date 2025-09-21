@@ -47,6 +47,7 @@ impl Semaphore {
     }
 
     #[allow(unused)]
+    /// Queries the kernel about the current status of the semaphore
     pub fn read(&self) -> crate::Result<SemaphoreArgs> {
         let mut args = SemaphoreArgs::default();
         if unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreArgs)) } == -1 {

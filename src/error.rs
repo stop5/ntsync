@@ -4,6 +4,8 @@ use std::{
 };
 
 #[derive(Debug)]
+/// An Enum that is used to return different Errors from the Kernel.
+/// Since there is not much Information returned its mostly an simple enum.
 pub enum Error {
     /// Returned when the /dev/ntsync device does not exists
     NotExist,
