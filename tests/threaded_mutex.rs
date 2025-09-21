@@ -27,13 +27,13 @@ fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
     trace!("My owner: {}\nother owner: {}", owner, thread_data.2);
     let mut sources = HashSet::new();
     sources.insert(mutex.into());
-    instance.wait_all(sources, None, Some(owner))?;
+    instance.wait_all(sources, None, Some(owner), None)?;
     let thread: JoinHandle<Result<(), Error>> = match Builder::new().name("lock thread".to_owned()).spawn::<_, Result<(), Error>>(move || {
         let (instance, mutex, _owner) = thread_data;
         debug!("current owner of the mutex: {:?}", mutex.read());
         let mut sources = HashSet::new();
         sources.insert(mutex.into());
-        let resp = instance.wait_all(sources, None, Some(_owner))?;
+        let resp = instance.wait_all(sources, None, Some(_owner), None)?;
         Ok(())
     }) {
         Ok(join) => join,

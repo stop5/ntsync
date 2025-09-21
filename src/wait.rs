@@ -1,6 +1,10 @@
 use std::{
     collections::HashSet,
     os::fd::AsRawFd as _,
+    time::{
+        SystemTime,
+        UNIX_EPOCH,
+    },
 };
 
 use ioctls::ioctl;
@@ -108,8 +112,20 @@ impl NtSync {
     /// It is the reason [NtSync::wait_any] also has an [`std::collections::HashSet`] in its signature.
     /// the Kernel Driver reacts with duplicate Values in its event sources or an Event that is both an object and an alert.
     /// this implementation prevents it by making it impossible to reach that state.
-    pub fn wait_all(&self, sources: HashSet<EventSources>, timeout: Option<u64>, owner: Option<OwnerId>, alert: Option<Event>) -> crate::Result<WaitAllStatus> {
-        let mut args = WaitArgs::new(timeout.unwrap_or(u64::MAX), sources.clone(), alert, owner, NtSyncFlags::empty())?;
+    pub fn wait_all(
+        &self,
+        sources: HashSet<EventSources>,
+        timeout: Option<SystemTime>,
+        owner: Option<OwnerId>,
+        alert: Option<Event>,
+    ) -> crate::Result<WaitAllStatus> {
+        let mut args = WaitArgs::new(
+            timeout.and_then(|st| st.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).ok()).unwrap_or(u64::MAX),
+            sources.clone(),
+            alert,
+            owner,
+            NtSyncFlags::empty(),
+        )?;
         if unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
             errno_match!()
         }
@@ -120,9 +136,15 @@ impl NtSync {
     }
 
     /// this is similar to [NtSync::wait_all], but it will stop waiting once one Source triggers.
-    pub fn wait_any(&self, sources: HashSet<EventSources>, timeout: Option<u64>, owner: Option<OwnerId>) -> crate::Result<WaitAnyStatus> {
+    pub fn wait_any(&self, sources: HashSet<EventSources>, timeout: Option<SystemTime>, owner: Option<OwnerId>) -> crate::Result<WaitAnyStatus> {
         let return_sources = Vec::from_iter(sources.clone());
-        let mut args = WaitArgs::new(timeout.unwrap_or(u64::MAX), sources.clone(), None, owner, NtSyncFlags::empty())?;
+        let mut args = WaitArgs::new(
+            timeout.and_then(|st| st.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).ok()).unwrap_or(u64::MAX),
+            sources.clone(),
+            None,
+            owner,
+            NtSyncFlags::empty(),
+        )?;
         if unsafe { ntsync_wait_any(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
             errno_match!()
         }
