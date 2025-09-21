@@ -11,11 +11,11 @@ use ioctls::ioctl;
 #[allow(unused_imports)]
 use log::*;
 
-use crate::Event;
 #[allow(unused)]
 use crate::{
     AlertDescriptor,
     Error,
+    Event,
     EventSources,
     NtSync,
     NtSyncFlags,
@@ -24,18 +24,16 @@ use crate::{
     raw,
 };
 
-type Timeout = u64;
-
 #[repr(C)]
 #[derive(Debug)]
 pub struct WaitArgs {
-    timeout: Timeout,
-    objs: *const u64,
+    timeout: u64,
+    objs: u64,
     count: u32,
-    owner: u32,
     index: u32,
-    alert: AlertDescriptor,
     flags: u32,
+    owner: u32,
+    alert: u32,
     pad: u32,
 }
 
@@ -68,8 +66,6 @@ impl WaitArgs {
                 #[cfg(feature = "unstable_mutex")]
                 EventSources::Mutex(mutex) => {
                     if owner.is_none_or(|val| val.0 == 0) {
-                        use crate::Error;
-
                         error!("Invalid Owner. Owner must be an non Zero value");
                         return Err(Error::InvalidValue);
                     }
@@ -79,7 +75,7 @@ impl WaitArgs {
         }
         Ok(Self {
             timeout,
-            objs: ids.as_ptr(),
+            objs: ids.as_ptr().addr() as u64,
             count: ids.len() as u32,
             owner: owner.unwrap_or_default().0,
             index: 0,
