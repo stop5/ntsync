@@ -23,11 +23,12 @@ features = ["trace"]
 version = "0.2"
 
 [features]
-default = ["random", "semaphore"]
+default = ["random", "semaphore", "mutex"]
+mutex = []
 random = ["dep:rand"]
 semaphore = []
 unstable = ["unstable_mutex"]
-unstable_mutex = []
+unstable_mutex = ["mutex"]
 
 [package]
 description = "An simple crate for using the new ntsync linux driver with rust."
