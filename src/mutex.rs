@@ -78,6 +78,17 @@ impl Mutex {
         }
         Ok(args)
     }
+
+    /// Forcibly unlocks the Mutex.
+    pub fn kill(&self, owner: OwnerId) -> crate::Result<()> {
+        let id = owner.0;
+        if unsafe { ntsync_mutex_kill(self.id, raw!(const id: u32)) } == -1 {
+            error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
+            errno_match!()
+        }
+        error!(target: "ntsync", "Mutex {} was killed.", self.id);
+        Ok(())
+    }
 }
 
 impl NtSync {
