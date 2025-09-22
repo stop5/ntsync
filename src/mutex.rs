@@ -15,6 +15,7 @@ use crate::{
 
 #[repr(C)]
 #[derive(Debug, new, Default)]
+#[new(visibility = "pub(crate)")]
 pub struct MutexStatus {
     owner: OwnerId,
     #[new(value = "0")]

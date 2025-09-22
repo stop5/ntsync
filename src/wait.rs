@@ -1,3 +1,6 @@
+use ioctls::ioctl;
+#[allow(unused_imports)]
+use log::*;
 use std::{
     collections::HashSet,
     os::fd::AsRawFd as _,
@@ -6,10 +9,6 @@ use std::{
         UNIX_EPOCH,
     },
 };
-
-use ioctls::ioctl;
-#[allow(unused_imports)]
-use log::*;
 
 use crate::Event;
 #[allow(unused)]

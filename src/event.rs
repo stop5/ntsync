@@ -15,6 +15,7 @@ use log::*;
 
 #[repr(C)]
 #[derive(Debug, new, Default)]
+#[new(visibility = "pub(crate)")]
 /// Represents the Status of the Event at the moment of the Query.
 pub struct EventStatus {
     manual: u32,

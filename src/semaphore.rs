@@ -14,6 +14,7 @@ use log::*;
 
 #[repr(C)]
 #[derive(Debug, new, Default)]
+#[new(visibility = "pub(crate)")]
 pub struct SemaphoreArgs {
     #[new(value = "0")]
     pub count: u32,
