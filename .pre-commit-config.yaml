@@ -66,3 +66,27 @@ repos:
         stages:
           - manual
           - pre-commit
+      - id: udeps
+        name: Dependency usage check
+        description: Checks that all dependencies in the Cargo.toml are actually used
+        entry: cargo +nightly udeps --all-features --workspace --keep-going
+        language: system
+        types_or:
+          - cargo
+          - rust
+        pass_filenames: false
+        stages:
+          - manual
+          - pre-commit
+      - id: cargo-semver-checks
+        name: Semantic Version check
+        description: Checks that the changes to the API are not too different for the version
+        entry: cargo semver-checks --workspace
+        language: system
+        pass_filenames: false
+        types_or:
+          - cargo
+          - rust
+        stages:
+          - manual
+          - pre-commit
