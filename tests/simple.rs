@@ -9,11 +9,13 @@ use log::*;
 use ntsync::{
     Error,
     NtSync,
+    NtSyncFlags,
     OwnerId,
 };
 use rstest::rstest;
 use std::collections::HashSet;
 use test_log::test;
+
 mod fixtures;
 use fixtures::*;
 
@@ -42,7 +44,7 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     assert_eq!(mutex.unlock(owner), Err(Error::PermissionDenied));
     let mut sources = HashSet::new();
     sources.insert(mutex.into());
-    instance.wait_all(sources, None, Some(owner), None)?;
+    instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
     Ok(())
 }
 
