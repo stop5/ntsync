@@ -3,6 +3,7 @@ use log::*;
 use ntsync::{
     Error,
     NtSync,
+    NtSyncFlags,
     OwnerId,
 };
 use rstest::rstest;
@@ -11,6 +12,11 @@ use std::{
     thread::{
         Builder,
         JoinHandle,
+        sleep,
+    },
+    time::{
+        Duration,
+        SystemTime,
     },
 };
 use test_log::test;
@@ -23,33 +29,35 @@ use fixtures::*;
 fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
     let mutex = instance.new_mutex()?;
     let thread_data = (instance.clone(), mutex, OwnerId::random());
-    let owner = OwnerId::random();
-    trace!("My owner: {}\nother owner: {}", owner, thread_data.2);
-    let mut sources = HashSet::new();
-    sources.insert(mutex.into());
-    instance.wait_all(sources, None, Some(owner), None)?;
     let thread: JoinHandle<Result<(), Error>> = match Builder::new().name("lock thread".to_owned()).spawn::<_, Result<(), Error>>(move || {
-        let (instance, mutex, _owner) = thread_data;
+        let (instance, mutex, owner) = thread_data;
         debug!("current owner of the mutex: {:?}", mutex.read());
         let mut sources = HashSet::new();
         sources.insert(mutex.into());
-        let resp = instance.wait_all(sources, None, Some(_owner), None)?;
+        let resp = instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
         Ok(())
     }) {
         Ok(join) => join,
         Err(error) => panic!("Failed to spawn thread for the test: {error}"),
     };
-    let mut failed = false;
     match thread.join() {
         Ok(Err(error)) => return Err(error),
         Ok(Ok(())) => {},
         Err(error) => {
-            error!("Failed to executed threat correctly: {error:?}");
-            failed = true;
+            panic!("Failed to executed threat correctly: {error:?}");
         },
     }
-    if failed {
-        panic!();
+
+    let owner = OwnerId::random();
+    trace!("My owner: {} other owner: {}", owner, thread_data.2);
+    let mut sources = HashSet::new();
+    sources.insert(mutex.into());
+    match instance.wait_all(sources, Some(SystemTime::now() + Duration::from_millis(200)), Some(owner), NtSyncFlags::empty(), None) {
+        Err(Error::Timeout) => {},
+        Err(error) => return Err(error),
+        Ok(status) => {
+            panic!("this shouldn't happen: {status:?}")
+        },
     }
     Ok(())
 }

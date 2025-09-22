@@ -16,8 +16,10 @@ use crate::{
 #[repr(C)]
 #[derive(Debug, new, Default)]
 #[new(visibility = "pub(crate)")]
+/// Mutex Status is the Representation of the Status of the mutex at point of the query
 pub struct MutexStatus {
     owner: OwnerId,
+    /// This is how deep an thread has relocked the mutex again(mutiple [NtSync::wait_all] or [NtSync::wait_any] calls without unlocking it.)
     #[new(value = "0")]
     count: u32,
 }

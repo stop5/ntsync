@@ -1,3 +1,4 @@
+use derive_new::new;
 use ioctls::ioctl;
 #[allow(unused_imports)]
 use log::*;
@@ -10,11 +11,11 @@ use std::{
     },
 };
 
-use crate::Event;
 #[allow(unused)]
 use crate::{
     AlertDescriptor,
     Error,
+    Event,
     EventSources,
     NtSync,
     NtSyncFlags,
@@ -23,79 +24,29 @@ use crate::{
     raw,
 };
 
-type Timeout = u64;
-
 #[repr(C)]
-#[derive(Debug)]
-pub struct WaitArgs {
-    timeout: Timeout,
-    objs: *const u64,
+#[derive(Debug, new)]
+struct WaitArgs {
+    timeout: u64,
+    objs: u64,
     count: u32,
-    owner: u32,
     index: u32,
-    alert: AlertDescriptor,
     flags: u32,
+    owner: u32,
+    alert: u32,
+    #[new(value = "0")]
     pad: u32,
 }
 
-impl WaitArgs {
-    pub(crate) fn new(
-        timeout: u64,
-        eventssources: HashSet<EventSources>,
-        alert: Option<Event>,
-        owner: Option<OwnerId>,
-        flags: NtSyncFlags,
-    ) -> crate::Result<Self> {
-        let mut ids = Vec::new();
-
-        let alertid = alert
-            .unwrap_or(Event {
-                id: 0,
-            })
-            .id;
-        for source in eventssources {
-            match source {
-                EventSources::Event(event) => {
-                    if alertid != 0 && alertid == event.id {
-                        return Err(Error::DuplicateEvent);
-                    }
-                    ids.push(event.id as u64)
-                },
-                #[cfg(feature = "semaphore")]
-                EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
-
-                #[cfg(feature = "unstable_mutex")]
-                EventSources::Mutex(mutex) => {
-                    if owner.is_none_or(|val| val.0 == 0) {
-                        use crate::Error;
-
-                        error!("Invalid Owner. Owner must be an non Zero value");
-                        return Err(Error::InvalidValue);
-                    }
-                    ids.push(mutex.id as u64);
-                },
-            }
-        }
-        Ok(Self {
-            timeout,
-            objs: ids.as_ptr(),
-            count: ids.len() as u32,
-            owner: owner.unwrap_or_default().0,
-            index: 0,
-            alert: 0,
-            flags: flags.bits(),
-            pad: 0,
-        })
-    }
-}
-
+#[derive(Debug, Clone)]
 pub struct WaitAllStatus {
     /// if true the Alert stopped the wait
     pub alerted: bool,
     /// The objects as they were given, so the aquired resources can be freed.
-    pub objects: HashSet<EventSources>,
+    pub objects: Vec<EventSources>,
 }
 
+#[derive(Debug, Clone)]
 pub struct WaitAnyStatus {
     /// if true the Alert stopped the wait
     pub alerted: bool,
@@ -116,34 +67,105 @@ impl NtSync {
         sources: HashSet<EventSources>,
         timeout: Option<SystemTime>,
         owner: Option<OwnerId>,
+        flags: NtSyncFlags,
         alert: Option<Event>,
     ) -> crate::Result<WaitAllStatus> {
+        let mut return_sources = Vec::with_capacity(sources.len());
+        let mut ids = Vec::new();
+
+        let alertid = alert
+            .unwrap_or(Event {
+                id: 0,
+            })
+            .id;
+        for source in sources {
+            return_sources.push(source);
+            match source {
+                EventSources::Event(event) => {
+                    if alertid != 0 && alertid == event.id {
+                        return Err(Error::DuplicateEvent);
+                    }
+                    ids.push(event.id as u64)
+                },
+                #[cfg(feature = "semaphore")]
+                EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
+
+                #[cfg(feature = "unstable_mutex")]
+                EventSources::Mutex(mutex) => {
+                    if owner.is_none_or(|val| val.0 == 0) {
+                        error!("Invalid Owner. Owner must be an non Zero value");
+                        return Err(Error::InvalidValue);
+                    }
+                    ids.push(mutex.id as u64);
+                },
+            }
+        }
         let mut args = WaitArgs::new(
             timeout.and_then(|st| st.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).ok()).unwrap_or(u64::MAX),
-            sources.clone(),
-            alert,
-            owner,
-            NtSyncFlags::empty(),
-        )?;
+            ids.as_ptr() as u64,
+            ids.len() as u32,
+            0,
+            flags.bits(),
+            owner.unwrap_or_default().0,
+            alertid as u32,
+        );
         if unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
             errno_match!()
         }
         Ok(WaitAllStatus {
             alerted: args.index == args.count,
-            objects: sources,
+            objects: return_sources,
         })
     }
 
     /// this is similar to [NtSync::wait_all], but it will stop waiting once one Source triggers.
-    pub fn wait_any(&self, sources: HashSet<EventSources>, timeout: Option<SystemTime>, owner: Option<OwnerId>) -> crate::Result<WaitAnyStatus> {
-        let return_sources = Vec::from_iter(sources.clone());
+    pub fn wait_any(
+        &self,
+        sources: HashSet<EventSources>,
+        timeout: Option<SystemTime>,
+        owner: Option<OwnerId>,
+        flags: NtSyncFlags,
+        alert: Option<Event>,
+    ) -> crate::Result<WaitAnyStatus> {
+        let mut return_sources = Vec::with_capacity(sources.len());
+        let mut ids = Vec::new();
+
+        let alertid = alert
+            .unwrap_or(Event {
+                id: 0,
+            })
+            .id;
+        for source in sources {
+            return_sources.push(source);
+            match source {
+                EventSources::Event(event) => {
+                    if alertid != 0 && alertid == event.id {
+                        return Err(Error::DuplicateEvent);
+                    }
+                    ids.push(event.id as u64)
+                },
+                #[cfg(feature = "semaphore")]
+                EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
+
+                #[cfg(feature = "unstable_mutex")]
+                EventSources::Mutex(mutex) => {
+                    if owner.is_none_or(|val| val.0 == 0) {
+                        error!("Invalid Owner. Owner must be an non Zero value");
+                        return Err(Error::InvalidValue);
+                    }
+                    ids.push(mutex.id as u64);
+                },
+            }
+        }
         let mut args = WaitArgs::new(
             timeout.and_then(|st| st.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).ok()).unwrap_or(u64::MAX),
-            sources.clone(),
-            None,
-            owner,
-            NtSyncFlags::empty(),
-        )?;
+            ids.as_ptr() as u64,
+            ids.len() as u32,
+            0,
+            flags.bits(),
+            owner.unwrap_or_default().0,
+            alertid as u32,
+        );
         if unsafe { ntsync_wait_any(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
             errno_match!()
         }
