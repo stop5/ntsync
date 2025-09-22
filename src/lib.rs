@@ -100,7 +100,7 @@ bitflags! {
 
 #[repr(transparent)]
 #[derive(Debug, new, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Default)]
-/// An [`OwnerId`] is just an identifier the Kernel Module does not check if it matches something else than an number
+/// An [`OwnerId`] is just an identifier. The Kernel Module does not check if it matches something else than an number
 pub struct OwnerId(u32);
 
 #[cfg(feature = "random")]
