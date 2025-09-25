@@ -64,12 +64,10 @@ impl NtSync {
     pub fn new_semaphore(&self, maximum: u32) -> crate::Result<Semaphore> {
         let args = SemaphoreArgs::new(maximum.clamp(1, u32::MAX));
         let result = unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreArgs)) };
-        trace!("result of create_sem: {result}");
         if result < 0 {
-            trace!("Failed to create semaphore");
+            trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create semaphore");
             errno_match!();
         }
-        trace!("{args:?}");
         Ok(Semaphore {
             id: result as Fd,
         })

@@ -97,7 +97,7 @@ impl NtSync {
         let args = MutexStatus::default();
         let result = unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!( const args: MutexStatus)) };
         if result < 0 {
-            trace!("Failed to create mutex");
+            trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create mutex");
             errno_match!();
         }
         trace!("{args:?}");

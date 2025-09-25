@@ -8,7 +8,7 @@ features = ["extra_traits", "align", "const-extern-fn"]
 version = "0.2"
 
 [dependencies.log]
-features = ["std"]
+features = ["std", "kv"]
 version = "0"
 
 [dependencies.rand]

@@ -56,7 +56,7 @@ macro_rules! errno_match {
     () => {{
         // TODO: replace with match when inline_const_pat is stable
         let __errno = unsafe { *::libc::__errno_location() };
-        trace!("Error number: {__errno}");
+        trace!(target: "ntsync", errno=__errno;"Trying to figure out which errno it is: {__errno}");
         if __errno != 0 {
             return if __errno == ::libc::EINVAL {
                 Err(crate::Error::InvalidValue)
@@ -147,7 +147,7 @@ impl NtSync {
                 })
             },
             Err(error) => {
-                trace!("Failed to open ntsync device: {error}");
+                trace!(target: "ntsync","Failed to open ntsync device: {error}");
                 Err(Error::IOError(error))
             },
         }

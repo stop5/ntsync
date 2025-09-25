@@ -93,7 +93,7 @@ impl NtSync {
                 #[cfg(feature = "unstable_mutex")]
                 EventSources::Mutex(mutex) => {
                     if owner.is_none_or(|val| val.0 == 0) {
-                        error!("Invalid Owner. Owner must be an non Zero value");
+                        error!(target: "ntsync", "Invalid Owner. Owner must be an non Zero value");
                         return Err(Error::InvalidValue);
                     }
                     ids.push(mutex.id as u64);
@@ -110,6 +110,7 @@ impl NtSync {
             alertid as u32,
         );
         if unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
+            trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(); "Failed to wait on the sources.");
             errno_match!()
         }
         Ok(WaitAllStatus {
@@ -150,7 +151,7 @@ impl NtSync {
                 #[cfg(feature = "unstable_mutex")]
                 EventSources::Mutex(mutex) => {
                     if owner.is_none_or(|val| val.0 == 0) {
-                        error!("Invalid Owner. Owner must be an non Zero value");
+                        error!(target: "ntsync", "Invalid Owner. Owner must be an non Zero value");
                         return Err(Error::InvalidValue);
                     }
                     ids.push(mutex.id as u64);

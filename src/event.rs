@@ -80,7 +80,6 @@ impl Event {
         if unsafe { ntsync_event_read(self.id, raw!(mut args: EventStatus)) } == -1 {
             errno_match!()
         }
-        trace!("returned args: {args:?}");
         Ok(args)
     }
 }
@@ -102,10 +101,9 @@ impl NtSync {
         let args = EventStatus::new(signaled as u32, manual as u32);
         let result = unsafe { ntsync_create_event(self.inner.handle.as_raw_fd(), raw!(const args: EventStatus)) };
         if result < 0 {
-            trace!("Failed to create event");
+            trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create event");
             errno_match!();
         }
-        trace!("{args:?}");
         Ok(Event {
             id: result as Fd,
         })
