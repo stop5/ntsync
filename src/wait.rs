@@ -56,7 +56,6 @@ pub struct WaitAnyStatus {
     pub index: u32,
 }
 
-/// The timeout argument of [NtSync::wait_all] and [NtSync::wait_any] is unstable and will be changed to an different Type.
 impl NtSync {
     /// this function waits until all sources are free/triggered.
     /// It is the reason [NtSync::wait_any] also has an [`std::collections::HashSet`] in its signature.
