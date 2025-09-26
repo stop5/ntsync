@@ -19,7 +19,7 @@ use crate::{
 /// Mutex Status is the Representation of the Status of the mutex at point of the query
 pub struct MutexStatus {
     owner: OwnerId,
-    /// This is how deep an thread has relocked the mutex again(mutiple [NtSync::wait_all] or [NtSync::wait_any] calls without unlocking it.)
+    /// This is how deep an thread has relocked the mutex again(mutiple [wait_any](NtSync::wait_any) or [wait_all](NtSync::wait_all) calls without unlocking it.)
     #[new(value = "0")]
     count: u32,
 }
@@ -44,8 +44,9 @@ impl MutexStatus {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-/// An Mutex similar to [`std::sync::Mutex`], but it can't store Data.
-/// On its own it can only be unlocked. The Locking is done in the [NtSync::wait_any] or [NtSync::wait_all] calls.
+/// An Mutex similar to [std::sync::Mutex], but it can't store Data.
+///
+/// On its own it can only be unlocked. The Locking is done in the [wait_any](NtSync::wait_any) or [wait_all](NtSync::wait_all) calls.
 
 pub struct Mutex {
     pub(crate) id: Fd,
@@ -60,7 +61,7 @@ impl Into<EventSources> for Mutex {
 }
 
 impl Mutex {
-    /// unlocks the Mutex, if its the wrong owner then it fails with [crate::error::Error::PermissionDenied]
+    /// unlocks the Mutex, if its the wrong owner then it fails with [PermissionDenied](crate::error::Error::PermissionDenied)
     pub fn unlock(&self, owner: OwnerId) -> crate::Result<()> {
         let mut args = MutexStatus::new(owner);
         if unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } == -1 {

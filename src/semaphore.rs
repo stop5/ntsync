@@ -15,10 +15,21 @@ use log::*;
 #[repr(C)]
 #[derive(Debug, new, Default)]
 #[new(visibility = "pub(crate)")]
-pub struct SemaphoreArgs {
-    #[new(value = "0")]
+/// [SemaphoreStatus] is the Status of the Semaphore at the time the [read](Semaphore::read) method was called.
+pub struct SemaphoreStatus {
+    #[new(value = "max")]
+    /// count is the amount that can be allocated.
+    ///
+    /// it is changed with the [release](Semaphore::release) method and waiting on the Semaphore with [wait_any](NtSync::wait_any) or [wait_all](NtSync::wait_all).
     pub count: u32,
-    pub max: u32,
+    max: u32,
+}
+
+impl SemaphoreStatus {
+    /// returns the maximum of allocatable resources.
+    pub fn max(&self) -> u32 {
+        self.max
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -49,9 +60,9 @@ impl Semaphore {
 
     #[allow(unused)]
     /// Queries the kernel about the current status of the semaphore
-    pub fn read(&self) -> crate::Result<SemaphoreArgs> {
-        let mut args = SemaphoreArgs::default();
-        if unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreArgs)) } == -1 {
+    pub fn read(&self) -> crate::Result<SemaphoreStatus> {
+        let mut args = SemaphoreStatus::default();
+        if unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } == -1 {
             errno_match!()
         }
         Ok(args)
@@ -60,10 +71,10 @@ impl Semaphore {
 
 
 impl NtSync {
-    /// creates a new Semaphore. it is always initalized with an count of 0 and an Maximum between 1 and [u32::MAX].
+    /// creates a new Semaphore. it is always initalized with an Maximum between 1 and [u32::MAX] and an count that is the same as the maximum.
     pub fn new_semaphore(&self, maximum: u32) -> crate::Result<Semaphore> {
-        let args = SemaphoreArgs::new(maximum.clamp(1, u32::MAX));
-        let result = unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreArgs)) };
+        let args = SemaphoreStatus::new(maximum.clamp(1, u32::MAX));
+        let result = unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreStatus)) };
         if result < 0 {
             trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create semaphore");
             errno_match!();
@@ -75,8 +86,8 @@ impl NtSync {
 }
 
 //#define NTSYNC_IOC_CREATE_SEM           _IOW ('N', 0x80, struct ntsync_sem_args)
-ioctl!(write ntsync_create_sem with b'N', 0x80; SemaphoreArgs);
+ioctl!(write ntsync_create_sem with b'N', 0x80; SemaphoreStatus);
 //#define NTSYNC_IOC_SEM_READ             _IOR ('N', 0x8b, struct ntsync_sem_args)
-ioctl!(read ntsync_sem_read with b'N', 0x8b; SemaphoreArgs);
+ioctl!(read ntsync_sem_read with b'N', 0x8b; SemaphoreStatus);
 //#define NTSYNC_IOC_SEM_RELEASE          _IOWR('N', 0x81, __u32)
 ioctl!(readwrite ntsync_sem_release with b'N', 0x81; u32);

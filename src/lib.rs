@@ -31,7 +31,10 @@ pub use crate::error::Error;
 
 #[cfg(feature = "semaphore")]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
-pub use crate::semaphore::Semaphore;
+pub use crate::semaphore::{
+    Semaphore,
+    SemaphoreStatus,
+};
 pub use event::{
     Event,
     EventStatus,
@@ -100,7 +103,9 @@ bitflags! {
 
 #[repr(transparent)]
 #[derive(Debug, new, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Default)]
-/// An [`OwnerId`] is just an identifier. The Kernel Module does not check if it matches something else than an number
+/// An [OwnerId] is just an identifier for an part of the code which needs protections against parallel Access.
+///
+/// The Kernel Module does not check if it matches something else than an number
 pub struct OwnerId(u32);
 
 #[cfg(feature = "random")]
@@ -119,12 +124,14 @@ impl Display for OwnerId {
 }
 
 #[derive(Debug)]
+#[doc(hidden)]
 struct NtSyncInner {
     handle: File,
 }
 
 #[derive(Debug)]
-/// NtSync is an abstration over the Kernel API that is realised via ioctls.
+/// [NtSync] is an abstration over the Kernel API that is realised via ioctls.
+///
 /// Each instance is indipendent so using objects from one instance with another is forbidden.
 pub struct NtSync {
     inner: Arc<NtSyncInner>,
@@ -166,29 +173,31 @@ impl Clone for NtSync {
 
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-/// EventSources is an enum, so that the different types can coexist in an [`std::collections::HashSet`], [`Vec`] or any other type deailing with them,
+/// An Wrapper around the different Syncronisation Primitives of this crate
+///
+/// EventSources is an enum, so that the different types can coexist in an [HashSet](std::collections::HashSet), [Vec] or any other type dealing with them,
 pub enum EventSources {
     #[cfg(feature = "unstable_mutex")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
-    /// The Wrapper for Mutex
+    /// The Wrapper for [Mutex]
     Mutex(mutex::Mutex),
 
     #[cfg(feature = "semaphore")]
     #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
-    /// The Wrapper for Semaphores
+    /// The Wrapper for [Semaphore]
     Semaphore(semaphore::Semaphore),
-    /// An simple wrapper around Events
+    /// An simple wrapper around [Events](Event)
     Event(event::Event),
 }
 
 impl EventSources {
-    /// Frees the respective resource.
-    #[cfg_attr(feature = "unstable_mutex", doc = "[crate::mutex::Mutex] are unlocked.")]
+    /// Frees the respective resource
+    #[cfg_attr(feature = "unstable_mutex", doc = "- [Mutex](crate::mutex::Mutex) are unlocked.")]
     #[cfg_attr(
         feature = "semaphore",
-        doc = "[crate::semaphore::Semaphore] are released with an amount of 1."
+        doc = "- [Semaphore](crate::semaphore::Semaphore) are released with an amount of 1."
     )]
-    #[doc = "[crate::event::Event] are reset."]
+    #[doc = "- [Event](crate::event::Event) are reset."]
     pub fn free(&self, _owner: OwnerId) -> Result<()> {
         match self {
             #[cfg(feature = "unstable_mutex")]
