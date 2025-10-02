@@ -90,7 +90,7 @@ impl NtSync {
                 #[cfg(feature = "semaphore")]
                 EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
 
-                #[cfg(feature = "unstable_mutex")]
+                #[cfg(feature = "mutex")]
                 EventSources::Mutex(mutex) => {
                     if owner.is_none_or(|val| val.0 == 0) {
                         error!(target: "ntsync", "Invalid Owner. Owner must be an non Zero value");
@@ -159,7 +159,7 @@ impl NtSync {
                 #[cfg(feature = "semaphore")]
                 EventSources::Semaphore(semaphore) => ids.push(semaphore.id as u64),
 
-                #[cfg(feature = "unstable_mutex")]
+                #[cfg(feature = "mutex")]
                 EventSources::Mutex(mutex) => {
                     if owner.is_none_or(|val| val.0 == 0) {
                         error!(target: "ntsync", "Invalid Owner. Owner must be an non Zero value");

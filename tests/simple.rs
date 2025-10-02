@@ -37,7 +37,7 @@ fn ntsync_event(instance: NtSync) -> Result<(), Error> {
 }
 
 #[test(rstest)]
-#[cfg(feature = "unstable_mutex")]
+#[cfg(feature = "mutex")]
 fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     let owner = OwnerId::random();
     let mutex = instance.new_mutex()?;

@@ -25,7 +25,7 @@ mod fixtures;
 use fixtures::*;
 
 #[test(rstest)]
-#[cfg(feature = "unstable_mutex")]
+#[cfg(feature = "mutex")]
 fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
     let mutex = instance.new_mutex()?;
     let thread_data = (instance.clone(), mutex, OwnerId::random());

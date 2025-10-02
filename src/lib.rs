@@ -19,8 +19,8 @@ use std::{
 
 mod error;
 mod event;
-#[cfg(feature = "unstable_mutex")]
-#[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
+#[cfg(feature = "mutex")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
 mod mutex;
 #[cfg(feature = "semaphore")]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
@@ -39,8 +39,8 @@ pub use event::{
     Event,
     EventStatus,
 };
-#[cfg(feature = "unstable_mutex")]
-#[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
+#[cfg(feature = "mutex")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
 pub use mutex::{
     Mutex,
     MutexStatus,
@@ -150,8 +150,8 @@ impl Clone for NtSync {
 ///
 /// EventSources is an enum, so that the different types can coexist in an [HashSet](std::collections::HashSet), [Vec] or any other type dealing with them,
 pub enum EventSources {
-    #[cfg(feature = "unstable_mutex")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable_mutex")))]
+    #[cfg(feature = "mutex")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
     /// The Wrapper for [Mutex]
     Mutex(mutex::Mutex),
 
@@ -165,7 +165,7 @@ pub enum EventSources {
 
 impl EventSources {
     /// Frees the respective resource
-    #[cfg_attr(feature = "unstable_mutex", doc = "- [Mutex](crate::mutex::Mutex) are unlocked.")]
+    #[cfg_attr(feature = "mutex", doc = "- [Mutex](crate::mutex::Mutex) are unlocked.")]
     #[cfg_attr(
         feature = "semaphore",
         doc = "- [Semaphore](crate::semaphore::Semaphore) are released with an amount of 1."
@@ -173,7 +173,7 @@ impl EventSources {
     #[doc = "- [Event](crate::event::Event) are reset."]
     pub fn free(&self, _owner: OwnerId) -> Result<()> {
         match self {
-            #[cfg(feature = "unstable_mutex")]
+            #[cfg(feature = "mutex")]
             EventSources::Mutex(mutex) => {
                 mutex.unlock(_owner)?;
             },
