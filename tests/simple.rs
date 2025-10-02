@@ -55,11 +55,13 @@ fn ntsync_semaphore(instance: NtSync) -> Result<(), Error> {
         Ok(event) => event,
         Err(error) => panic!("{}", error),
     };
-    assert_eq!(semaphore.release(2), Ok(0), "Wrong Previous value");
     assert_eq!(semaphore.release(2), Err(Error::SemaphoreOverflow), "Semaphore did not correctly overflow");
+    let mut set = HashSet::with_capacity(1);
+    set.insert(semaphore.into());
+    let _ = instance.wait_all(set, None, None, NtSyncFlags::empty(), None);
     let status = semaphore.read()?;
     assert_eq!(status.count, 2, "Wrong value for the count");
-    assert_eq!(status.max, 3, "Wrong value for the maximum");
-
+    assert_eq!(status.max(), 3, "Wrong value for the maximum");
+    semaphore.release(1)?;
     Ok(())
 }
