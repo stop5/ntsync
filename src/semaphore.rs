@@ -3,13 +3,18 @@ use std::os::fd::AsRawFd as _;
 use crate::{
     EventSources,
     Fd,
+    NTSYNC_MAGIC,
     NtSync,
-    errno_match,
     raw,
 };
 use derive_new::new;
-use ioctls::ioctl;
 use log::*;
+use nix::{
+    errno::Errno,
+    ioctl_read,
+    ioctl_readwrite,
+    ioctl_write_ptr,
+};
 
 
 #[repr(C)]
@@ -52,20 +57,40 @@ impl Semaphore {
     /// If an Error was returned the semaphore is NOT changed.
     /// It returns the previous count on return.
     pub fn release(&self, mut amount: u32) -> crate::Result<u32> {
-        if unsafe { ntsync_sem_release(self.id, raw!(mut amount: u32)) } == -1 {
-            errno_match!()
+        match unsafe { ntsync_sem_release(self.id, raw!(mut amount: u32)) } {
+            Ok(_) => Ok(amount),
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(amount)
     }
 
     #[allow(unused)]
     /// Queries the kernel about the current status of the semaphore
     pub fn read(&self) -> crate::Result<SemaphoreStatus> {
         let mut args = SemaphoreStatus::default();
-        if unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } == -1 {
-            errno_match!()
+        match unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } {
+            Ok(_) => Ok(args),
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(args)
     }
 }
 
@@ -74,20 +99,31 @@ impl NtSync {
     /// creates a new Semaphore. it is always initalized with an Maximum between 1 and [u32::MAX] and an count that is the same as the maximum.
     pub fn new_semaphore(&self, maximum: u32) -> crate::Result<Semaphore> {
         let args = SemaphoreStatus::new(maximum.clamp(1, u32::MAX));
-        let result = unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreStatus)) };
-        if result < 0 {
-            trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create semaphore");
-            errno_match!();
+        match unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreStatus)) } {
+            Ok(fd) => {
+                Ok(Semaphore {
+                    id: fd,
+                })
+            },
+            Err(errno) => {
+                trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create semaphore");
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(Semaphore {
-            id: result as Fd,
-        })
     }
 }
 
 //#define NTSYNC_IOC_CREATE_SEM           _IOW ('N', 0x80, struct ntsync_sem_args)
-ioctl!(write ntsync_create_sem with b'N', 0x80; SemaphoreStatus);
+ioctl_write_ptr!(ntsync_create_sem, NTSYNC_MAGIC, 0x80, SemaphoreStatus);
 //#define NTSYNC_IOC_SEM_READ             _IOR ('N', 0x8b, struct ntsync_sem_args)
-ioctl!(read ntsync_sem_read with b'N', 0x8b; SemaphoreStatus);
+ioctl_read!(ntsync_sem_read, NTSYNC_MAGIC, 0x8B, SemaphoreStatus);
 //#define NTSYNC_IOC_SEM_RELEASE          _IOWR('N', 0x81, __u32)
-ioctl!(readwrite ntsync_sem_release with b'N', 0x81; u32);
+ioctl_readwrite!(ntsync_sem_release, NTSYNC_MAGIC, 0x81, u32);

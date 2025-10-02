@@ -1,7 +1,10 @@
 use derive_new::new;
-use ioctls::ioctl;
 #[allow(unused_imports)]
 use log::*;
+use nix::{
+    errno::Errno,
+    ioctl_readwrite,
+};
 use std::{
     collections::HashSet,
     os::fd::AsRawFd as _,
@@ -11,16 +14,14 @@ use std::{
     },
 };
 
-#[allow(unused)]
 use crate::{
-    AlertDescriptor,
     Error,
     Event,
     EventSources,
+    NTSYNC_MAGIC,
     NtSync,
     NtSyncFlags,
     OwnerId,
-    errno_match,
     raw,
 };
 
@@ -108,14 +109,25 @@ impl NtSync {
             owner.unwrap_or_default().0,
             alertid as u32,
         );
-        if unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
-            trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(); "Failed to wait on the sources.");
-            errno_match!()
+        match unsafe { ntsync_wait_all(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } {
+            Ok(_) => {
+                Ok(WaitAllStatus {
+                    alerted: args.index == args.count,
+                    objects: return_sources,
+                })
+            },
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(WaitAllStatus {
-            alerted: args.index == args.count,
-            objects: return_sources,
-        })
     }
 
     /// this is similar to [NtSync::wait_all], but it will stop waiting once one Source triggers.
@@ -166,22 +178,34 @@ impl NtSync {
             owner.unwrap_or_default().0,
             alertid as u32,
         );
-        if unsafe { ntsync_wait_any(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } == -1 {
-            errno_match!()
-        }
-        Ok(WaitAnyStatus {
-            alerted: args.index == args.count,
-            objects: return_sources,
-            index: if args.index == args.count {
-                0
-            } else {
-                args.count
+        match unsafe { ntsync_wait_any(self.inner.handle.as_raw_fd(), raw!(mut args: WaitArgs)) } {
+            Ok(_) => {
+                Ok(WaitAnyStatus {
+                    alerted: args.index == args.count,
+                    objects: return_sources,
+                    index: if args.index == args.count {
+                        0
+                    } else {
+                        args.count
+                    },
+                })
             },
-        })
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
+        }
     }
 }
 
 //#define NTSYNC_IOC_WAIT_ANY             _IOWR('N', 0x82, struct ntsync_wait_args)
-ioctl!(readwrite ntsync_wait_any with b'N', 0x82; WaitArgs);
+ioctl_readwrite!(ntsync_wait_any, NTSYNC_MAGIC, 0x82, WaitArgs);
 //#define NTSYNC_IOC_WAIT_ALL             _IOWR('N', 0x83, struct ntsync_wait_args)
-ioctl!(readwrite ntsync_wait_all with b'N', 0x83; WaitArgs);
+ioctl_readwrite!(ntsync_wait_all, NTSYNC_MAGIC, 0x83, WaitArgs);

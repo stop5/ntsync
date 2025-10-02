@@ -1,15 +1,20 @@
 use std::os::fd::AsRawFd as _;
 
 use derive_new::new;
-use ioctls::ioctl;
 use log::*;
+use nix::{
+    errno::Errno,
+    ioctl_read,
+    ioctl_readwrite,
+    ioctl_write_ptr,
+};
 
 use crate::{
     EventSources,
     Fd,
+    NTSYNC_MAGIC,
     NtSync,
     OwnerId,
-    errno_match,
     raw,
 };
 
@@ -47,16 +52,15 @@ impl MutexStatus {
 /// An Mutex similar to [std::sync::Mutex], but it can't store Data.
 ///
 /// On its own it can only be unlocked. The Locking is done in the [wait_any](NtSync::wait_any) or [wait_all](NtSync::wait_all) calls.
-
 pub struct Mutex {
     pub(crate) id: Fd,
 }
 
 unsafe impl Send for Mutex {}
 
-impl Into<EventSources> for Mutex {
-    fn into(self) -> EventSources {
-        EventSources::Mutex(self)
+impl From<Mutex> for EventSources {
+    fn from(value: Mutex) -> EventSources {
+        EventSources::Mutex(value)
     }
 }
 
@@ -64,31 +68,63 @@ impl Mutex {
     /// unlocks the Mutex, if its the wrong owner then it fails with [PermissionDenied](crate::error::Error::PermissionDenied)
     pub fn unlock(&self, owner: OwnerId) -> crate::Result<()> {
         let mut args = MutexStatus::new(owner);
-        if unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } == -1 {
-            errno_match!()
+        match unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } {
+            Ok(_) => Ok(()),
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(())
     }
 
     #[allow(unused)]
     /// reads the current status of the Mutex.
     pub fn read(&self) -> crate::Result<MutexStatus> {
         let mut args = MutexStatus::default();
-        if unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } == -1 {
-            errno_match!()
+        match unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } {
+            Ok(_) => Ok(args),
+            Err(errno) => {
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        Ok(args)
     }
 
     /// Forcibly unlocks the Mutex.
     pub fn kill(&self, owner: OwnerId) -> crate::Result<()> {
         let id = owner.0;
-        if unsafe { ntsync_mutex_kill(self.id, raw!(const id: u32)) } == -1 {
-            error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
-            errno_match!()
+        match unsafe { ntsync_mutex_kill(self.id, raw!(const id: u32)) } {
+            Ok(_) => {
+                error!(target: "ntsync", "Mutex {} was killed.", self.id);
+                Ok(())
+            },
+            Err(errno) => {
+                error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        error!(target: "ntsync", "Mutex {} was killed.", self.id);
-        Ok(())
     }
 }
 
@@ -96,23 +132,33 @@ impl NtSync {
     /// Creates an unlocked, unowned Mutex.
     pub fn new_mutex(&self) -> crate::Result<Mutex> {
         let args = MutexStatus::default();
-        let result = unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!( const args: MutexStatus)) };
-        if result < 0 {
-            trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=result ;"Failed to create mutex");
-            errno_match!();
+        match unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!(const args: MutexStatus)) } {
+            Ok(fd) => {
+                Ok(Mutex {
+                    id: fd,
+                })
+            },
+            Err(errno) => {
+                trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create Mutex");
+                match errno {
+                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EINTR => Err(crate::Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    other => Err(crate::Error::Unknown(other as i32)),
+                }
+            },
         }
-        trace!("{args:?}");
-        Ok(Mutex {
-            id: result as Fd,
-        })
     }
 }
 
 //#define NTSYNC_IOC_CREATE_MUTEX         _IOW ('N', 0x84, struct ntsync_mutex_args)
-ioctl!(write ntsync_create_mutex with b'N', 0x84; MutexStatus);
+ioctl_write_ptr!(ntsync_create_mutex, NTSYNC_MAGIC, 0x84, MutexStatus);
 //#define NTSYNC_IOC_MUTEX_UNLOCK         _IOWR('N', 0x85, struct ntsync_mutex_args)
-ioctl!(readwrite ntsync_mutex_unlock with b'N', 0x85; MutexStatus);
+ioctl_readwrite!(ntsync_mutex_unlock, NTSYNC_MAGIC, 0x85, MutexStatus);
 //#define NTSYNC_IOC_MUTEX_KILL           _IOW ('N', 0x86, __u32)
-ioctl!(write ntsync_mutex_kill with b'N', 0x86; u32);
+ioctl_write_ptr!(ntsync_mutex_kill, NTSYNC_MAGIC, 0x86, u32);
 //#define NTSYNC_IOC_MUTEX_READ           _IOR ('N', 0x8c, struct ntsync_mutex_args)
-ioctl!(read ntsync_mutex_read with b'N', 0x8c; MutexStatus);
+ioctl_read!(ntsync_mutex_read, NTSYNC_MAGIC, 0x8C, MutexStatus);

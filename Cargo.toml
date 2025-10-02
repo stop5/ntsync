@@ -1,7 +1,6 @@
 [dependencies]
 bitflags = "2.9"
 derive-new = "0.7"
-ioctls = "0.6"
 
 [dependencies.libc]
 features = ["extra_traits", "align", "const-extern-fn"]
@@ -10,6 +9,11 @@ version = "0.2"
 [dependencies.log]
 features = ["std", "kv"]
 version = "0"
+
+[dependencies.nix]
+default-features = false
+features = ["ioctl"]
+version = "0.30.1"
 
 [dependencies.rand]
 optional = true

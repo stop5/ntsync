@@ -47,38 +47,12 @@ pub use mutex::{
 };
 
 const DEVICE: &str = "/dev/ntsync";
+const NTSYNC_MAGIC: u8 = b'N';
 
 type Fd = RawFd;
 
-pub(crate) type AlertDescriptor = u32;
-
 // Wrapper around my error Type for Results
 pub(crate) type Result<T> = result::Result<T, Error>;
-
-macro_rules! errno_match {
-    () => {{
-        // TODO: replace with match when inline_const_pat is stable
-        let __errno = unsafe { *::libc::__errno_location() };
-        trace!(target: "ntsync", errno=__errno;"Trying to figure out which errno it is: {__errno}");
-        if __errno != 0 {
-            return if __errno == ::libc::EINVAL {
-                Err(crate::Error::InvalidValue)
-            } else if __errno == ::libc::EPERM {
-                return Err(crate::Error::PermissionDenied);
-            } else if __errno == ::libc::EOVERFLOW {
-                return Err(crate::Error::SemaphoreOverflow);
-            } else if __errno == ::libc::EINTR {
-                return Err(crate::Error::Interrupt);
-            } else if __errno == ::libc::EOWNERDEAD {
-                return Err(crate::Error::OwnerDead);
-            } else if __errno == ::libc::ETIMEDOUT {
-                return Err(crate::Error::Timeout);
-            } else {
-                return Err(crate::Error::Unknown(__errno));
-            };
-        }
-    }};
-}
 
 macro_rules! raw {
     (mut $var:ident : $type:ty) => {
@@ -89,7 +63,6 @@ macro_rules! raw {
     };
 }
 
-pub(crate) use errno_match;
 pub(crate) use raw;
 
 bitflags! {
