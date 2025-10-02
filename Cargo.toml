@@ -2,11 +2,8 @@
 bitflags = "2"
 derive-new = "0"
 
-[dependencies.libc]
-features = ["extra_traits", "align", "const-extern-fn"]
-version = "0.2"
-
 [dependencies.log]
+default-features = false
 features = ["std", "kv"]
 version = "0"
 
@@ -16,6 +13,8 @@ features = ["ioctl"]
 version = "0"
 
 [dependencies.rand]
+default-features = false
+features = ["thread_rng"]
 optional = true
 version = "0.9"
 
