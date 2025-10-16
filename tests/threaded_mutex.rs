@@ -34,7 +34,7 @@ fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
         debug!("current owner of the mutex: {:?}", mutex.read());
         let mut sources = HashSet::new();
         sources.insert(mutex.into());
-        let resp = instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
+        let _resp = instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
         Ok(())
     }) {
         Ok(join) => join,
