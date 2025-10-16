@@ -57,6 +57,7 @@ pub struct Mutex {
 }
 
 unsafe impl Send for Mutex {}
+unsafe impl Sync for Mutex {}
 
 impl From<Mutex> for EventSources {
     fn from(value: Mutex) -> EventSources {

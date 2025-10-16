@@ -133,6 +133,7 @@ impl Event {
 }
 
 unsafe impl Send for Event {}
+unsafe impl Sync for Event {}
 
 impl From<Event> for EventSources {
     fn from(val: Event) -> Self {

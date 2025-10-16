@@ -136,6 +136,8 @@ impl NtSync {
 
 unsafe impl Send for NtSync {}
 
+unsafe impl Sync for NtSync {}
+
 impl Clone for NtSync {
     fn clone(&self) -> Self {
         Self {

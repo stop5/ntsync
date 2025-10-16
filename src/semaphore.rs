@@ -44,6 +44,7 @@ pub struct Semaphore {
     pub(crate) id: Fd,
 }
 unsafe impl Send for Semaphore {}
+unsafe impl Sync for Semaphore {}
 
 impl From<Semaphore> for EventSources {
     fn from(val: Semaphore) -> Self {
