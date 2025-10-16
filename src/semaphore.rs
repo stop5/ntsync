@@ -5,6 +5,7 @@ use crate::{
     Fd,
     NTSYNC_MAGIC,
     NtSync,
+    cold_path,
     raw,
 };
 use derive_new::new;
@@ -61,14 +62,13 @@ impl Semaphore {
         match unsafe { ntsync_sem_release(self.id, raw!(mut amount: u32)) } {
             Ok(_) => Ok(amount),
             Err(errno) => {
+                cold_path();
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
                     Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }
@@ -81,15 +81,8 @@ impl Semaphore {
         match unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } {
             Ok(_) => Ok(args),
             Err(errno) => {
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                cold_path();
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
@@ -110,11 +103,6 @@ impl NtSync {
                 trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create semaphore");
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
                     other => Err(crate::Error::Unknown(other as i32)),
                 }
             },

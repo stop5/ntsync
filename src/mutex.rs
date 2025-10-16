@@ -15,6 +15,7 @@ use crate::{
     NTSYNC_MAGIC,
     NtSync,
     OwnerId,
+    cold_path,
     raw,
 };
 
@@ -72,14 +73,14 @@ impl Mutex {
         match unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } {
             Ok(_) => Ok(()),
             Err(errno) => {
+                cold_path();
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
                     Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }
@@ -92,14 +93,13 @@ impl Mutex {
         match unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } {
             Ok(_) => Ok(args),
             Err(errno) => {
+                cold_path();
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
                     Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }
@@ -114,15 +114,15 @@ impl Mutex {
                 Ok(())
             },
             Err(errno) => {
+                cold_path();
                 error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
                     Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }
@@ -140,15 +140,14 @@ impl NtSync {
                 })
             },
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create Mutex");
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }

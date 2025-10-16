@@ -65,6 +65,14 @@ macro_rules! raw {
 
 pub(crate) use raw;
 
+#[inline(always)]
+#[cold]
+/// Helper until cold_path is stable
+///
+/// This helps by informing the compiler that this happens rarely and the hot path should be prioritiesed in terms of optimization
+pub(crate) fn cold_path() {}
+
+
 bitflags! {
     #[derive(Debug, Default)]
     /// This helps Managing the Flags for waiting on Events.
@@ -116,7 +124,10 @@ impl NtSync {
         match exists(DEVICE) {
             Ok(true) => {},
             Ok(false) => return Err(Error::NotExist),
-            Err(error) => return Err(Error::IOError(error)),
+            Err(error) => {
+                cold_path();
+                return Err(Error::IOError(error));
+            },
         }
         match File::open(DEVICE) {
             Ok(file) => {
@@ -127,6 +138,7 @@ impl NtSync {
                 })
             },
             Err(error) => {
+                cold_path();
                 trace!(target: "ntsync","Failed to open ntsync device: {error}");
                 Err(Error::IOError(error))
             },

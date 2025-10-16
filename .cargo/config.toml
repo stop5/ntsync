@@ -5,3 +5,24 @@ RUST_LOG = "trace"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[profile.dev]
+codegen-units = 16
+debug = true
+debug-assertions = true
+incremental = true
+lto = true
+opt-level = 3
+overflow-checks = true
+panic = "abort"
+rpath = false
+strip = "none"
+
+[profile.dev.package."*"]
+codegen-units = 1
+debug = false
+debug-assertions = false
+incremental = false
+opt-level = 3
+overflow-checks = false
+strip = "none"

@@ -22,6 +22,7 @@ use crate::{
     NtSync,
     NtSyncFlags,
     OwnerId,
+    cold_path,
     raw,
 };
 
@@ -117,14 +118,15 @@ impl NtSync {
                 })
             },
             Err(errno) => {
+                cold_path();
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
                     Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
                     Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
                 }
             },
         }
@@ -192,9 +194,6 @@ impl NtSync {
             },
             Err(errno) => {
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
                     Errno::EINTR => Err(crate::Error::Interrupt),
                     Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
                     Errno::ETIMEDOUT => Err(crate::Error::Timeout),

@@ -2,7 +2,6 @@ use std::os::fd::AsRawFd as _;
 
 use derive_new::new;
 use nix::{
-    errno::Errno,
     ioctl_read,
     ioctl_write_ptr,
 };
@@ -12,6 +11,7 @@ use crate::{
     Fd,
     NTSYNC_MAGIC,
     NtSync,
+    cold_path,
     raw,
 };
 use log::*;
@@ -56,16 +56,9 @@ impl Event {
         match unsafe { ntsync_event_set(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to signal event");
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
@@ -76,16 +69,9 @@ impl Event {
         match unsafe { ntsync_event_reset(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to reset event");
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
@@ -97,16 +83,9 @@ impl Event {
         match unsafe { ntsync_event_pulse(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to pulse event");
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
@@ -117,16 +96,9 @@ impl Event {
         match unsafe { ntsync_event_read(self.id, raw!(mut args: EventStatus)) } {
             Ok(_) => Ok(args),
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to query event");
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
@@ -155,16 +127,9 @@ impl NtSync {
                 })
             },
             Err(errno) => {
+                cold_path();
                 trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create event");
-                match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
-                    other => Err(crate::Error::Unknown(other as i32)),
-                }
+                Err(crate::Error::Unknown(errno as i32))
             },
         }
     }
