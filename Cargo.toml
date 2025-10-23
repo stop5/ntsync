@@ -37,9 +37,11 @@ unstable = ["unstable_mutex"]
 unstable_mutex = ["mutex"]
 
 [package]
+categories = ["concurrency", "os::linux-apis"]
 description = "An simple crate for using the new ntsync linux driver with rust."
 documentation = "https://docs.rs/ntsync"
 edition = "2024"
+keywords = ["linux", "ntsync"]
 license = "LGPL-3.0-only"
 name = "ntsync"
 repository = "https://github.com/stop5/ntsync"
