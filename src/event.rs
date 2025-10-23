@@ -1,12 +1,18 @@
-use std::os::fd::AsRawFd as _;
+use std::{
+    io,
+    os::fd::AsRawFd as _,
+};
 
 use derive_new::new;
 use nix::{
+    errno::Errno,
     ioctl_read,
     ioctl_write_ptr,
+    libc,
 };
 
 use crate::{
+    Error,
     EventSources,
     Fd,
     NTSYNC_MAGIC,
@@ -101,6 +107,34 @@ impl Event {
                 Err(crate::Error::Unknown(errno as i32))
             },
         }
+    }
+
+    /// deletes the event from the program.
+    /// All instances of this event are now invalid
+    pub fn delete(self) -> crate::Result<()> {
+        if unsafe { libc::close(self.id) } == -1 {
+            cold_path();
+            return match Errno::last() {
+                Errno::EBADF => {
+                    trace!(target: "ntsync", handle=self.id; "tried to double close an event");
+                    Err(Error::DoubleClose)
+                },
+                Errno::EINTR => {
+                    trace!(target: "ntsync", handle=self.id; "While closing the Event an interrupt occured");
+                    Err(Error::Interrupt)
+                },
+                Errno::EIO => {
+                    trace!(target: "ntsync", handle=self.id; "While closing the Event an IOError occured");
+                    Err(Error::IOError(io::Error::from_raw_os_error(Errno::EIO as i32)))
+                },
+                errno => {
+                    cold_path();
+                    trace!(target: "ntsync", handle=self.id; "Unexpected error while closing the event: {errno}");
+                    Err(Error::Unknown(errno as i32))
+                },
+            };
+        }
+        Ok(())
     }
 }
 

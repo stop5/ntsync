@@ -25,6 +25,8 @@ pub enum Error {
     Interrupt,
     /// When an Event is part of the sources and the alert that stops the wait.
     DuplicateEvent,
+    /// Returned when an object is closed at least twice
+    DoubleClose,
     /// When an unknown errno is set this is returned, so that an panic is prevented.
     Unknown(i32),
 }
@@ -57,6 +59,7 @@ impl Display for Error {
             Self::OwnerDead => f.write_str("Owner of the mutex was killed."),
             Self::Interrupt => f.write_str("Interrupt received"),
             Self::DuplicateEvent => f.write_str("An Event is part of the sources and was added as an Alert"),
+            Self::DoubleClose => f.write_str("Tried to close an object multiple times"),
             Self::Unknown(errno) => f.write_fmt(format_args!("Unknown errno received: {errno}")),
         }
     }
