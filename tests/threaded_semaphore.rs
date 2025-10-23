@@ -25,7 +25,7 @@ mod fixtures;
 use fixtures::*;
 
 #[test(rstest)]
-#[cfg(feature = "mutex")]
+#[cfg(mutex)]
 fn test_semaphore_locking(instance: NtSync) -> Result<(), Error> {
     let semaphore = instance.new_semaphore(1)?;
     let thread_data = (instance.clone(), semaphore);

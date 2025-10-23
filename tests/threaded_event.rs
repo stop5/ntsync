@@ -25,7 +25,7 @@ mod fixtures;
 use fixtures::*;
 
 #[test(rstest)]
-#[cfg(feature = "mutex")]
+#[cfg(mutex)]
 fn test_event_locking(instance: NtSync) -> Result<(), Error> {
     let event = instance.new_event(false, true)?;
     let thread_data = (instance.clone(), event);

@@ -37,7 +37,7 @@ fn ntsync_event(instance: NtSync) -> Result<(), Error> {
 }
 
 #[test(rstest)]
-#[cfg(feature = "mutex")]
+#[cfg(mutex)]
 fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     let owner = OwnerId::random();
     let mutex = instance.new_mutex()?;
@@ -49,7 +49,7 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
 }
 
 #[test(rstest)]
-#[cfg(feature = "semaphore")]
+#[cfg(semaphore)]
 fn ntsync_semaphore(instance: NtSync) -> Result<(), Error> {
     let semaphore = match instance.new_semaphore(3) {
         Ok(event) => event,

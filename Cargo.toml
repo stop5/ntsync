@@ -1,3 +1,6 @@
+[build-dependencies]
+cfg_aliases = "0.2.1"
+
 [dependencies]
 bitflags = "2"
 derive-new = "0"

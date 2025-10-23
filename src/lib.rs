@@ -19,17 +19,17 @@ use std::{
 
 mod error;
 mod event;
-#[cfg(feature = "mutex")]
+#[cfg(mutex)]
 #[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
 mod mutex;
-#[cfg(feature = "semaphore")]
+#[cfg(semaphore)]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
 mod semaphore;
 mod wait;
 
 pub use crate::error::Error;
 
-#[cfg(feature = "semaphore")]
+#[cfg(semaphore)]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
 pub use crate::semaphore::{
     Semaphore,
@@ -39,7 +39,7 @@ pub use event::{
     Event,
     EventStatus,
 };
-#[cfg(feature = "mutex")]
+#[cfg(mutex)]
 #[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
 pub use mutex::{
     Mutex,
@@ -89,7 +89,7 @@ bitflags! {
 /// The Kernel Module does not check if it matches something else than an number
 pub struct OwnerId(u32);
 
-#[cfg(feature = "random")]
+#[cfg(random)]
 #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
 impl OwnerId {
     /// Generates an random Owner
@@ -164,12 +164,12 @@ impl Clone for NtSync {
 ///
 /// EventSources is an enum, so that the different types can coexist in an [HashSet](std::collections::HashSet), [Vec] or any other type dealing with them,
 pub enum EventSources {
-    #[cfg(feature = "mutex")]
+    #[cfg(mutex)]
     #[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
     /// The Wrapper for [Mutex]
     Mutex(mutex::Mutex),
 
-    #[cfg(feature = "semaphore")]
+    #[cfg(semaphore)]
     #[cfg_attr(docsrs, doc(cfg(feature = "semaphore")))]
     /// The Wrapper for [Semaphore]
     Semaphore(semaphore::Semaphore),
@@ -187,11 +187,11 @@ impl EventSources {
     #[doc = "- [Event](crate::event::Event) are reset."]
     pub fn free(&self, _owner: OwnerId) -> Result<()> {
         match self {
-            #[cfg(feature = "mutex")]
+            #[cfg(mutex)]
             EventSources::Mutex(mutex) => {
                 mutex.unlock(_owner)?;
             },
-            #[cfg(feature = "semaphore")]
+            #[cfg(semaphore)]
             EventSources::Semaphore(semaphore) => {
                 semaphore.release(1)?;
             },

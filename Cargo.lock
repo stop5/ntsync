@@ -256,6 +256,7 @@ name = "ntsync"
 version = "0.3.0"
 dependencies = [
  "bitflags",
+ "cfg_aliases",
  "derive-new",
  "log",
  "nix",
