@@ -1,5 +1,5 @@
 use std::{
-    io,
+    io::Error as IOError,
     os::fd::AsRawFd as _,
 };
 
@@ -16,7 +16,9 @@ use crate::{
     EventSources,
     Fd,
     NTSYNC_MAGIC,
+    NTSyncObjects,
     NtSync,
+    Sealed,
     cold_path,
     raw,
 };
@@ -61,6 +63,8 @@ impl Event {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_set(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
+            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to signal event");
@@ -74,6 +78,8 @@ impl Event {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_reset(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
+            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to reset event");
@@ -88,6 +94,8 @@ impl Event {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_pulse(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
+            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to pulse event");
@@ -101,40 +109,17 @@ impl Event {
         let mut args = EventStatus::default();
         match unsafe { ntsync_event_read(self.id, raw!(mut args: EventStatus)) } {
             Ok(_) => Ok(args),
+            Err(Errno::EBADF) => {
+                cold_path();
+                trace!(target: "ntsync", handle=self.id ;"Event is already closed");
+                Err(crate::Error::AlreadyClosed)
+            },
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to query event");
                 Err(crate::Error::Unknown(errno as i32))
             },
         }
-    }
-
-    /// deletes the event from the program.
-    /// All instances of this event are now invalid
-    pub fn delete(self) -> crate::Result<()> {
-        if unsafe { libc::close(self.id) } == -1 {
-            cold_path();
-            return match Errno::last() {
-                Errno::EBADF => {
-                    trace!(target: "ntsync", handle=self.id; "tried to double close an event");
-                    Err(Error::DoubleClose)
-                },
-                Errno::EINTR => {
-                    trace!(target: "ntsync", handle=self.id; "While closing the Event an interrupt occured");
-                    Err(Error::Interrupt)
-                },
-                Errno::EIO => {
-                    trace!(target: "ntsync", handle=self.id; "While closing the Event an IOError occured");
-                    Err(Error::IOError(io::Error::from_raw_os_error(Errno::EIO as i32)))
-                },
-                errno => {
-                    cold_path();
-                    trace!(target: "ntsync", handle=self.id; "Unexpected error while closing the event: {errno}");
-                    Err(Error::Unknown(errno as i32))
-                },
-            };
-        }
-        Ok(())
     }
 }
 
@@ -166,6 +151,44 @@ impl NtSync {
                 Err(crate::Error::Unknown(errno as i32))
             },
         }
+    }
+}
+
+impl Sealed for Event {}
+
+impl NTSyncObjects for Event {
+    type Status = EventStatus;
+
+    /// deletes the event from the program.
+    /// All instances of this event are now invalid
+    fn delete(self) -> crate::Result<()> {
+        if unsafe { libc::close(self.id) } == -1 {
+            cold_path();
+            return match Errno::last() {
+                Errno::EBADF => {
+                    trace!(target: "ntsync", handle=self.id; "tried to double close an event");
+                    Err(Error::AlreadyClosed)
+                },
+                Errno::EINTR => {
+                    trace!(target: "ntsync", handle=self.id; "While closing the Event an interrupt occured");
+                    Err(Error::Interrupt)
+                },
+                Errno::EIO => {
+                    trace!(target: "ntsync", handle=self.id; "While closing the Event an IOError occured");
+                    Err(Error::IOError(IOError::from_raw_os_error(Errno::EIO as i32)))
+                },
+                errno => {
+                    cold_path();
+                    trace!(target: "ntsync", handle=self.id; "Unexpected error while closing the event: {errno}");
+                    Err(Error::Unknown(errno as i32))
+                },
+            };
+        }
+        Ok(())
+    }
+
+    fn read(&self) -> crate::Result<Self::Status> {
+        self.status()
     }
 }
 

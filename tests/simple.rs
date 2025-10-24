@@ -1,13 +1,7 @@
-#![allow(unused_imports)]
-use std::{
-    os::fd::AsRawFd,
-    thread::sleep,
-    time::Duration,
-};
-
 use log::*;
 use ntsync::{
     Error,
+    NTSyncObjects as _,
     NtSync,
     NtSyncFlags,
     OwnerId,

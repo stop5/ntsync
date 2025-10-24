@@ -197,6 +197,7 @@ impl NtSync {
                     Errno::EINTR => Err(crate::Error::Interrupt),
                     Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
                     Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    Errno::EINVAL => Err(Error::InvalidValue),
                     other => Err(crate::Error::Unknown(other as i32)),
                 }
             },

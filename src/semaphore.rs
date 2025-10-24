@@ -8,7 +8,9 @@ use crate::{
     EventSources,
     Fd,
     NTSYNC_MAGIC,
+    NTSyncObjects,
     NtSync,
+    Sealed,
     cold_path,
     raw,
 };
@@ -70,6 +72,7 @@ impl Semaphore {
                 cold_path();
                 match errno {
                     Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
+                    Errno::EBADF => Err(crate::Error::AlreadyClosed),
                     other => {
                         cold_path();
                         Err(crate::Error::Unknown(other as i32))
@@ -78,29 +81,22 @@ impl Semaphore {
             },
         }
     }
+}
 
-    #[allow(unused)]
-    /// Queries the kernel about the current status of the semaphore
-    pub fn read(&self) -> crate::Result<SemaphoreStatus> {
-        let mut args = SemaphoreStatus::default();
-        match unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } {
-            Ok(_) => Ok(args),
-            Err(errno) => {
-                cold_path();
-                Err(crate::Error::Unknown(errno as i32))
-            },
-        }
-    }
+impl Sealed for Semaphore {}
+
+impl NTSyncObjects for Semaphore {
+    type Status = SemaphoreStatus;
 
     /// deletes the event from the program.
     /// All instances of this event are now invalid
-    pub fn delete(self) -> crate::Result<()> {
+    fn delete(self) -> crate::Result<()> {
         if unsafe { libc::close(self.id) } == -1 {
             cold_path();
             return match Errno::last() {
                 Errno::EBADF => {
                     trace!(target: "ntsync", handle=self.id; "tried to double close an Semaphore");
-                    Err(Error::DoubleClose)
+                    Err(Error::AlreadyClosed)
                 },
                 Errno::EINTR => {
                     trace!(target: "ntsync", handle=self.id; "While closing the Semaphore an interrupt occured");
@@ -118,6 +114,23 @@ impl Semaphore {
             };
         }
         Ok(())
+    }
+
+    #[allow(unused)]
+    /// Queries the kernel about the current status of the semaphore
+    fn read(&self) -> crate::Result<SemaphoreStatus> {
+        let mut args = SemaphoreStatus::default();
+        match unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } {
+            Ok(_) => Ok(args),
+            Err(Errno::EBADF) => {
+                cold_path();
+                Err(crate::Error::AlreadyClosed)
+            },
+            Err(errno) => {
+                cold_path();
+                Err(crate::Error::Unknown(errno as i32))
+            },
+        }
     }
 }
 

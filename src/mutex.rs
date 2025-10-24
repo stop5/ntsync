@@ -18,8 +18,10 @@ use crate::{
     EventSources,
     Fd,
     NTSYNC_MAGIC,
+    NTSyncObjects,
     NtSync,
     OwnerId,
+    Sealed,
     cold_path,
     raw,
 };
@@ -77,30 +79,12 @@ impl Mutex {
         let mut args = MutexStatus::new(owner);
         match unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } {
             Ok(_) => Ok(()),
+            Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 match errno {
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
                     Errno::EPERM => Err(crate::Error::PermissionDenied),
-                    other => {
-                        cold_path();
-                        Err(crate::Error::Unknown(other as i32))
-                    },
-                }
-            },
-        }
-    }
-
-    #[allow(unused)]
-    /// reads the current status of the Mutex.
-    pub fn read(&self) -> crate::Result<MutexStatus> {
-        let mut args = MutexStatus::default();
-        match unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } {
-            Ok(_) => Ok(args),
-            Err(errno) => {
-                cold_path();
-                match errno {
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
                     other => {
                         cold_path();
                         Err(crate::Error::Unknown(other as i32))
@@ -118,6 +102,7 @@ impl Mutex {
                 error!(target: "ntsync", "Mutex {} was killed.", self.id);
                 Ok(())
             },
+            Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
@@ -132,16 +117,47 @@ impl Mutex {
             },
         }
     }
+}
+
+impl NtSync {
+    /// Creates an unlocked, unowned Mutex.
+    pub fn new_mutex(&self) -> crate::Result<Mutex> {
+        let args = MutexStatus::default();
+        match unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!(const args: MutexStatus)) } {
+            Ok(fd) => {
+                Ok(Mutex {
+                    id: fd,
+                })
+            },
+            Err(errno) => {
+                cold_path();
+                trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create Mutex");
+                match errno {
+                    Errno::EBADF => Err(crate::Error::AlreadyClosed),
+                    other => {
+                        cold_path();
+                        Err(crate::Error::Unknown(other as i32))
+                    },
+                }
+            },
+        }
+    }
+}
+
+impl Sealed for Mutex {}
+
+impl NTSyncObjects for Mutex {
+    type Status = MutexStatus;
 
     /// deletes the Mutex from the program.
     /// All instances of this Mutex are now invalid
-    pub fn delete(self) -> crate::Result<()> {
+    fn delete(self) -> crate::Result<()> {
         if unsafe { libc::close(self.id) } == -1 {
             cold_path();
             return match Errno::last() {
                 Errno::EBADF => {
                     trace!(target: "ntsync", handle=self.id; "tried to double close an Mutex");
-                    Err(Error::DoubleClose)
+                    Err(Error::AlreadyClosed)
                 },
                 Errno::EINTR => {
                     trace!(target: "ntsync", handle=self.id; "While closing the Mutex an interrupt occured");
@@ -160,23 +176,19 @@ impl Mutex {
         }
         Ok(())
     }
-}
 
-impl NtSync {
-    /// Creates an unlocked, unowned Mutex.
-    pub fn new_mutex(&self) -> crate::Result<Mutex> {
-        let args = MutexStatus::default();
-        match unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!(const args: MutexStatus)) } {
-            Ok(fd) => {
-                Ok(Mutex {
-                    id: fd,
-                })
-            },
+    #[allow(unused)]
+    /// reads the current status of the Mutex.
+    fn read(&self) -> crate::Result<MutexStatus> {
+        let mut args = MutexStatus::default();
+        match unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } {
+            Ok(_) => Ok(args),
             Err(errno) => {
                 cold_path();
-                trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create Mutex");
                 match errno {
+                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
                     Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EBADF => Err(Error::AlreadyClosed),
                     other => {
                         cold_path();
                         Err(crate::Error::Unknown(other as i32))

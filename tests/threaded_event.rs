@@ -1,7 +1,7 @@
-#![allow(unused_imports)]
 use log::*;
 use ntsync::{
     Error,
+    NTSyncObjects as _,
     NtSync,
     NtSyncFlags,
     OwnerId,

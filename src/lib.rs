@@ -6,13 +6,13 @@
 use bitflags::bitflags;
 use derive_new::new;
 use log::*;
+use nix::libc::c_int;
 use std::{
     fmt::Display,
     fs::{
         File,
         exists,
     },
-    os::fd::RawFd,
     result,
     sync::Arc,
 };
@@ -49,7 +49,7 @@ pub use mutex::{
 const DEVICE: &str = "/dev/ntsync";
 const NTSYNC_MAGIC: u8 = b'N';
 
-type Fd = RawFd;
+type Fd = c_int;
 
 // Wrapper around my error Type for Results
 pub(crate) type Result<T> = result::Result<T, Error>;
@@ -201,4 +201,18 @@ impl EventSources {
         };
         Ok(())
     }
+}
+
+trait Sealed {}
+
+#[allow(private_bounds)]
+/// NTSyncObjects is an Trait that combines all objects of the API.
+pub trait NTSyncObjects: Sealed + Into<EventSources> + Clone + Copy {
+    /// The Status represents the status of the object at the time the read method call returned. It must not be shared across threads.
+    type Status;
+
+    /// Deletes the object. All copies of this object are now invalid and return the [Error::InvalidValue] Enum item.
+    fn delete(self) -> Result<()>;
+    /// Reads the status of the object
+    fn read(&self) -> Result<Self::Status>;
 }
