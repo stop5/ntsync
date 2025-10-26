@@ -9,7 +9,7 @@ body:
   id: kernel-version
   attributes:
     label: Kernel Version
-    placeholder: 6.0.0
+    placeholder: "6.0.0"
   validations:
     required: true
 
@@ -17,7 +17,7 @@ body:
   id: library-version
   attributes:
     label: Library Version
-    placeholder: 0.4.0
+    placeholder: "0.4.0"
   validations:
     required: true
 
@@ -26,7 +26,7 @@ body:
   attributes:
     label: Value
     description: the Value inside the Error::Unknown
-    placeholder: 1
+    placeholder: "1"
   validations:
     required: true
 
@@ -35,6 +35,9 @@ body:
     label: Steps To Reproduce
     description: Steps to reproduce the behavior.
     value: |
+      let instance = NtSync::new().unwrap();
+      let object = instance.new_();
+    placeholder: |
       let instance = NtSync::new().unwrap();
       let object = instance.new_();
     render: rust
