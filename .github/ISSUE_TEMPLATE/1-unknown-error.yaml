@@ -1,0 +1,42 @@
+name: Error::Unknown return Value
+description: Only a few Errors can be expected from the kernel API, Error::Unknown is returned when the expectations meet Reality
+assignees:
+- stop50
+labels: return-unknown
+title: "[Bug] <Type>::<function> -> Error::Unknown(<code>)"
+body:
+- type: input
+  id: kernel-version
+  attributes:
+    label: Kernel Version
+    placeholder: 6.0.0
+  validations:
+    required: true
+
+- type: input
+  id: library-version
+  attributes:
+    label: Library Version
+    placeholder: 0.4.0
+  validations:
+    required: true
+
+- type: input
+  id: unknown-value
+  attributes:
+    label: Value
+    description: the Value inside the Error::Unknown
+    placeholder: 1
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Steps To Reproduce
+    description: Steps to reproduce the behavior.
+    value: |
+      let instance = NtSync::new().unwrap();
+      let object = instance.new_();
+    render: rust
+  validations:
+    required: true
