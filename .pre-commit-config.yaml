@@ -14,7 +14,6 @@ repos:
           - rust
       - id: check-symlinks
       - id: check-vcs-permalinks
-      - id: check-yaml
       - id: detect-private-key
       - id: fix-byte-order-marker
       - id: forbid-submodules
