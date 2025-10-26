@@ -1,6 +1,20 @@
 use ntsync::NtSync;
 use rstest::fixture;
 
+#[macro_export]
+macro_rules! hash {
+    ($($item:expr),*) => {
+        {
+        let mut set = ::std::collections::HashSet::new();
+        $(
+            set.insert($item);
+        )*
+        set
+        }
+    };
+}
+
+
 #[fixture]
 pub fn instance() -> NtSync {
     match NtSync::new() {

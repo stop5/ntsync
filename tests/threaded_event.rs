@@ -1,23 +1,13 @@
 use log::*;
 use ntsync::{
     Error,
-    NTSyncObjects as _,
     NtSync,
     NtSyncFlags,
-    OwnerId,
 };
 use rstest::rstest;
-use std::{
-    collections::HashSet,
-    thread::{
-        Builder,
-        JoinHandle,
-        sleep,
-    },
-    time::{
-        Duration,
-        SystemTime,
-    },
+use std::thread::{
+    Builder,
+    JoinHandle,
 };
 use test_log::test;
 
@@ -32,9 +22,7 @@ fn test_event_locking(instance: NtSync) -> Result<(), Error> {
     let _thread: JoinHandle<Result<(), Error>> = match Builder::new().name("lock thread".to_owned()).spawn::<_, Result<(), Error>>(move || {
         let (instance, event) = thread_data;
         trace!("Current Status of the event: {:?}", event.status()?);
-        let mut sources = HashSet::new();
-        sources.insert(event.into());
-        let _resp = instance.wait_all(sources, None, None, NtSyncFlags::empty(), None)?;
+        let _resp = instance.wait_all(hash!(event.into()), None, None, NtSyncFlags::empty(), None)?;
         Ok(())
     }) {
         Ok(join) => join,

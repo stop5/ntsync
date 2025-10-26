@@ -7,7 +7,6 @@ use ntsync::{
     OwnerId,
 };
 use rstest::rstest;
-use std::collections::HashSet;
 use test_log::test;
 
 mod fixtures;
@@ -36,9 +35,7 @@ fn ntsync_mutex(instance: NtSync) -> Result<(), Error> {
     let owner = OwnerId::random();
     let mutex = instance.new_mutex()?;
     assert_eq!(mutex.unlock(owner), Err(Error::PermissionDenied));
-    let mut sources = HashSet::new();
-    sources.insert(mutex.into());
-    instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
+    instance.wait_all(hash!(mutex.into()), None, Some(owner), NtSyncFlags::empty(), None)?;
     Ok(())
 }
 
@@ -50,9 +47,7 @@ fn ntsync_semaphore(instance: NtSync) -> Result<(), Error> {
         Err(error) => panic!("{}", error),
     };
     assert_eq!(semaphore.release(2), Err(Error::SemaphoreOverflow), "Semaphore did not correctly overflow");
-    let mut set = HashSet::with_capacity(1);
-    set.insert(semaphore.into());
-    let _ = instance.wait_all(set, None, None, NtSyncFlags::empty(), None);
+    let _ = instance.wait_all(hash!(semaphore.into()), None, None, NtSyncFlags::empty(), None);
     let status = semaphore.read()?;
     assert_eq!(status.count, 2, "Wrong value for the count");
     assert_eq!(status.max(), 3, "Wrong value for the maximum");

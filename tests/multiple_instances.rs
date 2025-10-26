@@ -11,7 +11,6 @@ use ntsync::{
     OwnerId,
 };
 use rstest::rstest;
-use std::collections::HashSet;
 use test_log::test;
 
 mod fixtures;
@@ -23,12 +22,7 @@ fn test_multiple_instances(instance1: NtSync, instance2: NtSync) -> Result<(), E
     let mutex2 = instance2.new_mutex()?;
 
     let result = instance1.wait_all(
-        {
-            let mut s = HashSet::with_capacity(2);
-            s.insert(mutex1.into());
-            s.insert(mutex2.into());
-            s
-        },
+        hash!(mutex1.into(), mutex2.into()),
         Some(SystemTime::now() + Duration::from_millis(200)),
         Some(OwnerId::random()),
         NtSyncFlags::default(),

@@ -12,7 +12,6 @@ use ntsync::{
     OwnerId,
 };
 use rstest::rstest;
-use std::collections::HashSet;
 use test_log::test;
 
 mod fixtures;
@@ -35,17 +34,8 @@ macro_rules! test_op {
 }
 
 fn common_tests<T: NTSyncObjects>(object: T, instance: NtSync) -> Result<(), Error> {
-    let result = instance.wait_any(
-        {
-            let mut s = HashSet::with_capacity(1);
-            s.insert(object.into());
-            s
-        },
-        Some(SystemTime::now() + Duration::from_millis(200)),
-        Some(OwnerId::random()),
-        NtSyncFlags::default(),
-        None,
-    );
+    let result =
+        instance.wait_any(hash!(object.into()), Some(SystemTime::now() + Duration::from_millis(200)), Some(OwnerId::random()), NtSyncFlags::default(), None);
     match result {
         Ok(_) => return Err(Error::InvalidValue),
         Err(Error::InvalidValue) => {},

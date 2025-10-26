@@ -8,11 +8,9 @@ use ntsync::{
 };
 use rstest::rstest;
 use std::{
-    collections::HashSet,
     thread::{
         Builder,
         JoinHandle,
-        sleep,
     },
     time::{
         Duration,
@@ -32,9 +30,7 @@ fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
     let thread: JoinHandle<Result<(), Error>> = match Builder::new().name("lock thread".to_owned()).spawn::<_, Result<(), Error>>(move || {
         let (instance, mutex, owner) = thread_data;
         debug!("current owner of the mutex: {:?}", mutex.read());
-        let mut sources = HashSet::new();
-        sources.insert(mutex.into());
-        let _resp = instance.wait_all(sources, None, Some(owner), NtSyncFlags::empty(), None)?;
+        let _resp = instance.wait_all(hash!(mutex.into()), None, Some(owner), NtSyncFlags::empty(), None)?;
         Ok(())
     }) {
         Ok(join) => join,
@@ -50,9 +46,7 @@ fn test_mutex_locking(instance: NtSync) -> Result<(), Error> {
 
     let owner = OwnerId::random();
     trace!("My owner: {} other owner: {}", owner, thread_data.2);
-    let mut sources = HashSet::new();
-    sources.insert(mutex.into());
-    match instance.wait_all(sources, Some(SystemTime::now() + Duration::from_millis(200)), Some(owner), NtSyncFlags::empty(), None) {
+    match instance.wait_all(hash!(mutex.into()), Some(SystemTime::now() + Duration::from_millis(200)), Some(owner), NtSyncFlags::empty(), None) {
         Err(Error::Timeout) => {},
         Err(error) => return Err(error),
         Ok(status) => {
