@@ -1,7 +1,7 @@
 name: Error::Unknown return Value
 description: Only a few Errors can be expected from the kernel API, Error::Unknown is returned when the expectations meet Reality
 assignees:
-- stop50
+- stop5
 labels: return-unknown
 title: "[Bug] <Type>::<function> -> Error::Unknown(<code>)"
 body:
