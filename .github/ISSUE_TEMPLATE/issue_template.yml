@@ -22,15 +22,6 @@ body:
   validations:
     required: true
 
-- type: input
-  id: unknown-value
-  attributes:
-    label: Value
-    description: the Value inside the Error::Unknown
-    placeholder: "1"
-  validations:
-    required: true
-
 - type: textarea
   attributes:
     label: Steps To Reproduce
