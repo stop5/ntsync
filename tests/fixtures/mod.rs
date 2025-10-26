@@ -10,3 +10,13 @@ pub fn instance() -> NtSync {
         Ok(ntsync) => ntsync,
     }
 }
+
+#[fixture]
+pub fn instance1() -> NtSync {
+    instance()
+}
+
+#[fixture]
+pub fn instance2() -> NtSync {
+    instance()
+}
