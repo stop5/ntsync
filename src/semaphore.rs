@@ -10,6 +10,7 @@ use crate::{
     NTSYNC_MAGIC,
     NTSyncObjects,
     NtSync,
+    Result,
     Sealed,
     cold_path,
     raw,
@@ -65,17 +66,17 @@ impl Semaphore {
     /// After the work is done increment the semaphore with this count, so that `amount` threads are woken up.
     /// If an Error was returned the semaphore is NOT changed.
     /// It returns the previous count on return.
-    pub fn release(&self, mut amount: u32) -> crate::Result<u32> {
+    pub fn release(&self, mut amount: u32) -> Result<u32> {
         match unsafe { ntsync_sem_release(self.id, raw!(mut amount: u32)) } {
             Ok(_) => Ok(amount),
             Err(errno) => {
                 cold_path();
                 match errno {
-                    Errno::EOVERFLOW => Err(crate::Error::SemaphoreOverflow),
-                    Errno::EBADF => Err(crate::Error::AlreadyClosed),
+                    Errno::EOVERFLOW => Err(Error::SemaphoreOverflow),
+                    Errno::EBADF => Err(Error::AlreadyClosed),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },
@@ -90,7 +91,7 @@ impl NTSyncObjects for Semaphore {
 
     /// deletes the event from the program.
     /// All instances of this event are now invalid
-    fn delete(self) -> crate::Result<()> {
+    fn delete(self) -> Result<()> {
         if unsafe { libc::close(self.id) } == -1 {
             cold_path();
             return match Errno::last() {
@@ -118,17 +119,17 @@ impl NTSyncObjects for Semaphore {
 
     #[allow(unused)]
     /// Queries the kernel about the current status of the semaphore
-    fn read(&self) -> crate::Result<SemaphoreStatus> {
+    fn read(&self) -> Result<SemaphoreStatus> {
         let mut args = SemaphoreStatus::default();
         match unsafe { ntsync_sem_read(self.id, raw!(mut args: SemaphoreStatus)) } {
             Ok(_) => Ok(args),
             Err(Errno::EBADF) => {
                 cold_path();
-                Err(crate::Error::AlreadyClosed)
+                Err(Error::AlreadyClosed)
             },
             Err(errno) => {
                 cold_path();
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
@@ -137,7 +138,7 @@ impl NTSyncObjects for Semaphore {
 
 impl NtSync {
     /// creates a new Semaphore. it is always initalized with an Maximum between 1 and [u32::MAX] and an count that is the same as the maximum.
-    pub fn new_semaphore(&self, maximum: u32) -> crate::Result<Semaphore> {
+    pub fn new_semaphore(&self, maximum: u32) -> Result<Semaphore> {
         let args = SemaphoreStatus::new(maximum.clamp(1, u32::MAX));
         match unsafe { ntsync_create_sem(self.inner.handle.as_raw_fd(), raw!(const args: SemaphoreStatus)) } {
             Ok(fd) => {
@@ -148,8 +149,8 @@ impl NtSync {
             Err(errno) => {
                 trace!(target: "ntsync",  handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create semaphore");
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    Errno::EINVAL => Err(Error::InvalidValue),
+                    other => Err(Error::Unknown(other as i32)),
                 }
             },
         }

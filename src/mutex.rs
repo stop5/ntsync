@@ -21,6 +21,7 @@ use crate::{
     NTSyncObjects,
     NtSync,
     OwnerId,
+    Result,
     Sealed,
     cold_path,
     raw,
@@ -75,7 +76,7 @@ impl From<Mutex> for EventSources {
 
 impl Mutex {
     /// unlocks the Mutex, if its the wrong owner then it fails with [PermissionDenied](crate::error::Error::PermissionDenied)
-    pub fn unlock(&self, owner: OwnerId) -> crate::Result<()> {
+    pub fn unlock(&self, owner: OwnerId) -> Result<()> {
         let mut args = MutexStatus::new(owner);
         match unsafe { ntsync_mutex_unlock(self.id, raw!(mut args: MutexStatus)) } {
             Ok(_) => Ok(()),
@@ -83,11 +84,11 @@ impl Mutex {
             Err(errno) => {
                 cold_path();
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EINVAL => Err(Error::InvalidValue),
+                    Errno::EPERM => Err(Error::PermissionDenied),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },
@@ -95,7 +96,7 @@ impl Mutex {
     }
 
     /// Forcibly unlocks the Mutex.
-    pub fn kill(&self, owner: OwnerId) -> crate::Result<()> {
+    pub fn kill(&self, owner: OwnerId) -> Result<()> {
         let id = owner.0;
         match unsafe { ntsync_mutex_kill(self.id, raw!(const id: u32)) } {
             Ok(_) => {
@@ -107,11 +108,11 @@ impl Mutex {
                 cold_path();
                 error!(target: "ntsync", "Wanted to kill Mutex {}, but failed", self.id);
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EPERM => Err(crate::Error::PermissionDenied),
+                    Errno::EINVAL => Err(Error::InvalidValue),
+                    Errno::EPERM => Err(Error::PermissionDenied),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },
@@ -121,7 +122,7 @@ impl Mutex {
 
 impl NtSync {
     /// Creates an unlocked, unowned Mutex.
-    pub fn new_mutex(&self) -> crate::Result<Mutex> {
+    pub fn new_mutex(&self) -> Result<Mutex> {
         let args = MutexStatus::default();
         match unsafe { ntsync_create_mutex(self.inner.handle.as_raw_fd(), raw!(const args: MutexStatus)) } {
             Ok(fd) => {
@@ -133,10 +134,10 @@ impl NtSync {
                 cold_path();
                 trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create Mutex");
                 match errno {
-                    Errno::EBADF => Err(crate::Error::AlreadyClosed),
+                    Errno::EBADF => Err(Error::AlreadyClosed),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },
@@ -151,7 +152,7 @@ impl NTSyncObjects for Mutex {
 
     /// deletes the Mutex from the program.
     /// All instances of this Mutex are now invalid
-    fn delete(self) -> crate::Result<()> {
+    fn delete(self) -> Result<()> {
         if unsafe { libc::close(self.id) } == -1 {
             cold_path();
             return match Errno::last() {
@@ -179,19 +180,19 @@ impl NTSyncObjects for Mutex {
 
     #[allow(unused)]
     /// reads the current status of the Mutex.
-    fn read(&self) -> crate::Result<MutexStatus> {
+    fn read(&self) -> Result<MutexStatus> {
         let mut args = MutexStatus::default();
         match unsafe { ntsync_mutex_read(self.id, raw!(mut args: MutexStatus)) } {
             Ok(_) => Ok(args),
             Err(errno) => {
                 cold_path();
                 match errno {
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
+                    Errno::EOWNERDEAD => Err(Error::OwnerDead),
+                    Errno::EINVAL => Err(Error::InvalidValue),
                     Errno::EBADF => Err(Error::AlreadyClosed),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },

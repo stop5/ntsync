@@ -18,6 +18,7 @@ use crate::{
     NTSYNC_MAGIC,
     NTSyncObjects,
     NtSync,
+    Result,
     Sealed,
     cold_path,
     raw,
@@ -59,65 +60,65 @@ impl Event {
     /// Triggers the event and signals all Threads waiting on it.
     /// The Event has to be reset after callling the function
     /// It returns if the signal was previously triggered
-    pub fn signal(&self) -> crate::Result<bool> {
+    pub fn signal(&self) -> Result<bool> {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_set(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
-            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EINVAL) => Err(Error::InvalidValue),
             Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to signal event");
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
 
     /// [Event::reset] resets manual Events. It does nothing in Automatic Events
-    pub fn reset(&self) -> crate::Result<bool> {
+    pub fn reset(&self) -> Result<bool> {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_reset(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
-            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EINVAL) => Err(Error::InvalidValue),
             Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to reset event");
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
 
     /// Sets and resets the Event in an Atomic Operation.
     /// Simultanous Reads will show the Event as unsignaled
-    pub fn pulse(&self) -> crate::Result<bool> {
+    pub fn pulse(&self) -> Result<bool> {
         let mut state: u32 = 0;
         match unsafe { ntsync_event_pulse(self.id, raw!(mut state: u32)) } {
             Ok(_) => Ok(state != 0),
-            Err(Errno::EINVAL) => Err(crate::Error::InvalidValue),
+            Err(Errno::EINVAL) => Err(Error::InvalidValue),
             Err(Errno::EBADF) => Err(Error::AlreadyClosed),
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to pulse event");
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
 
     /// Returns the Status at the moment of the Query.
-    pub fn status(&self) -> crate::Result<EventStatus> {
+    pub fn status(&self) -> Result<EventStatus> {
         let mut args = EventStatus::default();
         match unsafe { ntsync_event_read(self.id, raw!(mut args: EventStatus)) } {
             Ok(_) => Ok(args),
             Err(Errno::EBADF) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id ;"Event is already closed");
-                Err(crate::Error::AlreadyClosed)
+                Err(Error::AlreadyClosed)
             },
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.id, returncode=errno as i32 ;"Failed to query event");
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
@@ -137,7 +138,7 @@ impl NtSync {
     /// if signaled is true the threads begin the work as soo they are waiting.
     /// when manual is true, the event has to be reset manually.
     /// if manual is false after the first thread successful waits on it, the signaled status is set to false.
-    pub fn new_event(&self, signaled: bool, manual: bool) -> crate::Result<Event> {
+    pub fn new_event(&self, signaled: bool, manual: bool) -> Result<Event> {
         let args = EventStatus::new(signaled as u32, manual as u32);
         match unsafe { ntsync_create_event(self.inner.handle.as_raw_fd(), raw!(const args: EventStatus)) } {
             Ok(fd) => {
@@ -148,7 +149,7 @@ impl NtSync {
             Err(errno) => {
                 cold_path();
                 trace!(target: "ntsync", handle=self.inner.handle.as_raw_fd(), returncode=errno as i32 ;"Failed to create event");
-                Err(crate::Error::Unknown(errno as i32))
+                Err(Error::Unknown(errno as i32))
             },
         }
     }
@@ -161,7 +162,7 @@ impl NTSyncObjects for Event {
 
     /// deletes the event from the program.
     /// All instances of this event are now invalid
-    fn delete(self) -> crate::Result<()> {
+    fn delete(self) -> Result<()> {
         if unsafe { libc::close(self.id) } == -1 {
             cold_path();
             return match Errno::last() {
@@ -187,7 +188,7 @@ impl NTSyncObjects for Event {
         Ok(())
     }
 
-    fn read(&self) -> crate::Result<Self::Status> {
+    fn read(&self) -> Result<Self::Status> {
         self.status()
     }
 }

@@ -22,6 +22,7 @@ use crate::{
     NtSync,
     NtSyncFlags,
     OwnerId,
+    Result,
     cold_path,
     raw,
 };
@@ -70,7 +71,7 @@ impl NtSync {
         owner: Option<OwnerId>,
         flags: NtSyncFlags,
         alert: Option<Event>,
-    ) -> crate::Result<WaitAllStatus> {
+    ) -> Result<WaitAllStatus> {
         let mut return_sources = Vec::with_capacity(sources.len());
         let mut ids = Vec::new();
 
@@ -120,12 +121,12 @@ impl NtSync {
             Err(errno) => {
                 cold_path();
                 match errno {
-                    Errno::EINVAL => Err(crate::Error::InvalidValue),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    Errno::EINVAL => Err(Error::InvalidValue),
+                    Errno::EOWNERDEAD => Err(Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(Error::Timeout),
                     other => {
                         cold_path();
-                        Err(crate::Error::Unknown(other as i32))
+                        Err(Error::Unknown(other as i32))
                     },
                 }
             },
@@ -140,7 +141,7 @@ impl NtSync {
         owner: Option<OwnerId>,
         flags: NtSyncFlags,
         alert: Option<Event>,
-    ) -> crate::Result<WaitAnyStatus> {
+    ) -> Result<WaitAnyStatus> {
         let mut return_sources = Vec::with_capacity(sources.len());
         let mut ids = Vec::new();
 
@@ -194,11 +195,11 @@ impl NtSync {
             },
             Err(errno) => {
                 match errno {
-                    Errno::EINTR => Err(crate::Error::Interrupt),
-                    Errno::EOWNERDEAD => Err(crate::Error::OwnerDead),
-                    Errno::ETIMEDOUT => Err(crate::Error::Timeout),
+                    Errno::EINTR => Err(Error::Interrupt),
+                    Errno::EOWNERDEAD => Err(Error::OwnerDead),
+                    Errno::ETIMEDOUT => Err(Error::Timeout),
                     Errno::EINVAL => Err(Error::InvalidValue),
-                    other => Err(crate::Error::Unknown(other as i32)),
+                    other => Err(Error::Unknown(other as i32)),
                 }
             },
         }

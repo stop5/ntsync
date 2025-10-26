@@ -120,7 +120,7 @@ pub struct NtSync {
 
 impl NtSync {
     /// Creates an new instance of NtSync
-    pub fn new() -> crate::Result<Self> {
+    pub fn new() -> Result<Self> {
         match exists(DEVICE) {
             Ok(true) => {},
             Ok(false) => return Err(Error::NotExist),
