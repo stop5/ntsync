@@ -1,9 +1,11 @@
-[build-dependencies]
-cfg_aliases = "0.2"
+[build-dependencies.cfg_aliases]
+version = "0.2"
 
-[dependencies]
-bitflags = "2"
-derive-new = "0"
+[dependencies.bitflags]
+version = "2"
+
+[dependencies.derive-new]
+version = "0"
 
 [dependencies.log]
 default-features = false
@@ -50,4 +52,35 @@ version = "0.4.0"
 [package.metadata.docs.rs]
 features = ["unstable", "default"]
 
-[workspace]
+[workspace.lints.clippy]
+absolute_paths = "deny"
+assigning_clones = "deny"
+clone_on_copy = "deny"
+collapsible_if = "deny"
+empty_enums = "warn"
+expect_used = "deny"
+expl_impl_clone_on_copy = "deny"
+format_push_string = "deny"
+future_not_send = "warn"
+identity_op = "deny"
+ip_constant = "deny"
+join_absolute_paths = "deny"
+macro_use_imports = "deny"
+manual_assert = "deny"
+manual_let_else = "deny"
+manual_range_contains = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+missing_safety_doc = "deny"
+module_name_repetitions = "deny"
+multiple_crate_versions = "warn"
+panic = "deny"
+single_component_path_imports = "allow"
+string_lit_as_bytes = "deny"
+todo = "warn"
+too_many_lines = "deny"
+unimplemented = "warn"
+unnecessary_debug_formatting = "deny"
+unnecessary_self_imports = "deny"
+unused_trait_names = "deny"
+unwrap_used = "deny"

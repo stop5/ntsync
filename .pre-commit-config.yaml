@@ -22,70 +22,15 @@ repos:
           - --fix=lf
       - id: trailing-whitespace
       - id: destroyed-symlinks
-  - repo: local
+  - repo: 'https://gitea.sebastian-tobie.de/sebastian/pre-commit-standard-files'
+    rev: v0.8
     hooks:
-      - id: fmt
-        name: fmt
-        description: Format files with cargo fmt.
-        entry: cargo +nightly fmt
-        language: system
-        types:
-          - rust
-        args:
-          - --
-      - id: cargo-check
-        name: cargo check
-        description: Check the package for errors.
-        entry: cargo check
-        language: system
-        types:
-          - rust
-        pass_filenames: false
-      - id: clippy
-        name: clippy
-        description: Lint rust sources
-        entry: cargo +nightly clippy
-        language: system
-        args:
-          - --
-          - -D
-          - warnings
-        types:
-          - rust
-        pass_filenames: false
+      - id: standard-editorconfig
+      - id: standard-rustfmt
+      - id: standard-clippy
+      - id: cargo-check-nightly
+      - id: clippy-nightly
       - id: tomlq
-        name: toml Format
-        description: Formats Toml files
-        entry: tomlq -S -ti .
-        language: system
-        types_or:
-          - toml
-          - cargo
-        exclude: '\.lock$'
-        stages:
-          - manual
-          - pre-commit
+      - id: cargo-tomlq
       - id: udeps
-        name: Dependency usage check
-        description: Checks that all dependencies in the Cargo.toml are actually used
-        entry: cargo +nightly udeps --all-features --workspace --keep-going
-        language: system
-        types_or:
-          - cargo
-          - rust
-        pass_filenames: false
-        stages:
-          - manual
-          - pre-commit
-      - id: cargo-semver-checks
-        name: Semantic Version check
-        description: Checks that the changes to the API are not too different for the version
-        entry: cargo semver-checks --workspace
-        language: system
-        pass_filenames: false
-        types_or:
-          - cargo
-          - rust
-        stages:
-          - manual
-          - pre-commit
+      - id: cargo-format-nightly
